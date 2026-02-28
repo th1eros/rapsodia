@@ -18,6 +18,20 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// ==========================
+// CORS (ADICIONADO)
+// ==========================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReact", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+// ==========================
+
 // Services (Injeção de Dependência)
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IVulnService, VulnService>();
@@ -36,6 +50,13 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
+
+// ==========================
+// CORS (ATIVAÇÃO)
+// ==========================
+app.UseCors("AllowReact");
+// ==========================
+
 app.UseAuthorization();
 app.MapControllers();
 
