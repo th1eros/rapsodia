@@ -7,11 +7,12 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllers
+// Controllers + Configuração de enums como string
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter());
     });
 
 // Swagger
@@ -19,7 +20,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // ==========================
-// CORS (ADICIONADO)
+// CORS
 // ==========================
 builder.Services.AddCors(options =>
 {
@@ -30,7 +31,6 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
-// ==========================
 
 // Services (Injeção de Dependência)
 builder.Services.AddScoped<IAssetService, AssetService>();
@@ -51,13 +51,11 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-// ==========================
-// CORS (ATIVAÇÃO)
-// ==========================
+// CORS
 app.UseCors("AllowReact");
-// ==========================
 
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

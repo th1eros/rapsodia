@@ -148,7 +148,10 @@ namespace API_SVsharp.Services.Assets
             {
                 var asset = new Asset
                 {
-                    Nome = dto.Nome!
+                    Nome = dto.Nome!,
+                    Tipo = dto.Tipo!,
+                    Ambiente = dto.Ambiente!,   // obrigatório
+                    Habilitado = dto.Habilitado
                 };
 
                 _context.Assets.Add(asset);
@@ -156,9 +159,10 @@ namespace API_SVsharp.Services.Assets
 
                 response.Dados = new AssetResponseDTO
                 {
-                    Id = asset.Id,
-                    Nome = asset.Nome,
-                    CreatedAt = asset.CreatedAt
+                    Nome = dto.Nome!,
+                    Tipo = dto.Tipo!,
+                    Ambiente = dto.Ambiente!,  
+                    Habilitado = dto.Habilitado
                 };
 
                 response.Status = true;
@@ -166,8 +170,14 @@ namespace API_SVsharp.Services.Assets
             }
             catch (Exception ex)
             {
-                response.Status = false;
-                response.Mensagem = ex.Message;
+                return new ResponseModel<AssetResponseDTO>
+                {
+                    Status = false,
+                    Mensagem = ex.Message +
+                                (ex.InnerException != null
+                                    ? " | INNER: " + ex.InnerException.Message
+                                    : "")
+                };
             }
 
             return response;
