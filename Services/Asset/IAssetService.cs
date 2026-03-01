@@ -20,5 +20,8 @@ namespace API_SVsharp.Application.Interfaces
         Task<ResponseModel<bool>> ArquivarAsset(int idAsset);
 
         Task<ResponseModel<bool>> RestaurarAsset(int idAsset);
+
+        Task<ResponseModel<bool>> RemoverVulnDoAssetAsync(int assetId, int vulnId);
+
     }
 }

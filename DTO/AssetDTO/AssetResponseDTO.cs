@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 
 namespace API_SVsharp.DTO.Asset
 {
@@ -8,7 +9,7 @@ namespace API_SVsharp.DTO.Asset
 
         public string Nome { get; set; } = null!;
 
-        public string? Descricao { get; set; }
+        public string? Descrição { get; set; }
 
         public DateTime CreatedAt { get; set; }
     }

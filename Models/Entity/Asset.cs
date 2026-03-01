@@ -9,13 +9,13 @@ namespace API_SVsharp.Models.Entity
         public string Nome { get; set; } = null!;
         // Ex: "Servidor Debian", "API Financeira"
 
-        public string Type { get; set; } = null!;
+        public string Tipo { get; set; } = null!;
         // Ex: "OperatingSystem", "WebApplication", "Database", "API"
 
-        public string Environment { get; set; } = null!;
+        public string Ambiente { get; set; } = null!;
         // Ex: "DEV", "HML", "PROD"
 
-        public bool Active { get; set; } = true;
+        public bool Habilitado { get; set; } = true;
 
         public DateTime? ArchivedAt { get; set; }
 
