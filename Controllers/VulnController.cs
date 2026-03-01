@@ -6,7 +6,7 @@ using API_SVsharp.DTO.Response;
 
 namespace API_SVsharp.Controllers
 {
-    [Route("api/vulns")]
+    [Route("Vulnerabilidade")]
     [ApiController]
     public class VulnController : ControllerBase
     {
@@ -20,7 +20,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // GET /api/vulns
         // ==============================
-        [HttpGet]
+        [HttpGet("Lista")]
         public async Task<ActionResult<ResponseModel<List<VulnResponseDTO>>>> Listar()
         {
             var response = await _vulnService.ListarVulns();
@@ -30,7 +30,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // GET /api/vulns/{id}
         // ==============================
-        [HttpGet("{id:int}")]
+        [HttpGet("Id")]
         public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> BuscarPorId(int id)
         {
             var response = await _vulnService.BuscarVulnPorId(id);
@@ -40,7 +40,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // POST /api/vulns
         // ==============================
-        [HttpPost]
+        [HttpPost("Criar")]
         public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> Criar([FromBody] VulnCriacaoDTO dto)
         {
             var response = await _vulnService.CriarVuln(dto);
@@ -54,7 +54,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // PUT /api/vulns/{id}
         // ==============================
-        [HttpPut("{id:int}")]
+        [HttpPut("Editar")]
         public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> Editar(int id, [FromBody] EditarVulnDTO dto)
         {
             var response = await _vulnService.EditarVuln(id, dto);
@@ -64,7 +64,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // PATCH /api/vulns/{id}/archive
         // ==============================
-        [HttpPatch("{id:int}/archive")]
+        [HttpPatch("Arquivar")]
         public async Task<ActionResult<ResponseModel<bool>>> Arquivar(int id)
         {
             var response = await _vulnService.ArquivarVuln(id);
@@ -74,7 +74,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // PATCH /api/vulns/{id}/restore
         // ==============================
-        [HttpPatch("{id:int}/restore")]
+        [HttpPatch("Restauração")]
         public async Task<ActionResult<ResponseModel<bool>>> Restaurar(int id)
         {
             var response = await _vulnService.RestaurarVuln(id);

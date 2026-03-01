@@ -8,11 +8,11 @@ namespace API_SVsharp.DTO.Asset
         public string? Nome { get; set; }
 
         [MaxLength(100)]
-        public string? Type { get; set; }
+        public string? Tipo { get; set; }
 
         [MaxLength(10)]
-        public string? Environment { get; set; }
+        public string? Ambiente { get; set; }
 
-        public bool? Active { get; set; }
+        public bool? Habilitado { get; set; }
     }
 }

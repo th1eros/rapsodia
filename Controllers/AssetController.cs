@@ -2,10 +2,11 @@
 using API_SVsharp.Application.Interfaces;
 using API_SVsharp.DTO.Response;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace API_SVsharp.Controllers
 {
-    [Route("api/assets")]
+    [Route("Asset")]
     [ApiController]
     public class AssetController : ControllerBase
     {
@@ -17,9 +18,9 @@ namespace API_SVsharp.Controllers
         }
 
         // ==============================
-        // GET /api/assets
+        // GET 
         // ==============================
-        [HttpGet]
+        [HttpGet("Lista")]
         public async Task<ActionResult<ResponseModel<List<AssetResponseDTO>>>> Listar()
         {
             var response = await _assetService.ListarAssets();
@@ -29,7 +30,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // GET /api/assets/{id}
         // ==============================
-        [HttpGet("{id:int}")]
+        [HttpGet("Id")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> BuscarPorId(int id)
         {
             var response = await _assetService.BuscarAssetPorId(id);
@@ -39,7 +40,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // POST /api/assets
         // ==============================
-        [HttpPost]
+        [HttpPost("Criar")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Criar([FromBody] AssetCriacaoDTO dto)
         {
             var response = await _assetService.CriarAsset(dto);
@@ -53,7 +54,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // PUT /api/assets/{id}
         // ==============================
-        [HttpPut("{id:int}")]
+        [HttpPut("Editar")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Editar(int id, [FromBody] EditarAssetDTO dto)
         {
             var response = await _assetService.EditarAsset(id, dto);
@@ -63,7 +64,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // PATCH /api/assets/{id}/archive
         // ==============================
-        [HttpPatch("{id:int}/archive")]
+        [HttpPatch("Arquivar")]
         public async Task<ActionResult<ResponseModel<bool>>> Arquivar(int id)
         {
             var response = await _assetService.ArquivarAsset(id);
@@ -73,7 +74,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // PATCH /api/assets/{id}/restore
         // ==============================
-        [HttpPatch("{id:int}/restore")]
+        [HttpPatch("Restauração")]
         public async Task<ActionResult<ResponseModel<bool>>> Restaurar(int id)
         {
             var response = await _assetService.RestaurarAsset(id);
@@ -83,11 +84,20 @@ namespace API_SVsharp.Controllers
         // ==============================
         // POST /api/assets/{id}/vulns/{vulnId}
         // ==============================
-        [HttpPost("{id:int}/vulns/{vulnId:int}")]
+        [HttpPost("Adicionar Vulnerabilidade(s)")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> AdicionarVuln(int id, int vulnId)
         {
             var response = await _assetService.AdicionarVulnAoAsset(id, vulnId);
             return response.Status ? Ok(response) : BadRequest(response);
         }
+        // ==============================
+        // POST /api/assets/{id}/vulns/{vulnId}
+        // ==============================
+        [HttpDelete("Remover")]
+        public async Task<ActionResult<ResponseModel<bool>>> RemoverVulnDoAsset(int assetId, int vulnId)
+        {
+            var response = await _assetService.RemoverVulnDoAssetAsync(assetId, vulnId);
+            return response.Status ? Ok(response) : NotFound(response);
+        }
     }
-}
+}   

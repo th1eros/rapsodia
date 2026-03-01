@@ -286,6 +286,36 @@ namespace API_SVsharp.Services.Assets
             }
 
             return response;
+
+        }
+        // ==============================
+        // REMOVER VULN DO ASSET
+        // ==============================
+        public async Task<ResponseModel<bool>> RemoverVulnDoAssetAsync(int assetId, int vulnId)
+        {
+            var response = new ResponseModel<bool>();
+
+            var relacao = await _context.AssetVulns
+                .FirstOrDefaultAsync(x =>
+                    x.AssetId == assetId &&
+                    x.VulnId == vulnId);
+
+            if (relacao == null)
+            {
+                response.Status = false;
+                response.Mensagem = "Vínculo não encontrado.";
+                response.Dados = false;
+                return response;
+            }
+
+            _context.AssetVulns.Remove(relacao);
+            await _context.SaveChangesAsync();
+
+            response.Status = true;
+            response.Mensagem = "Vínculo removido com sucesso.";
+            response.Dados = true;
+
+            return response;
         }
     }
 }
