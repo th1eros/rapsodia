@@ -3,9 +3,11 @@ using API_SVsharp.Application.Interfaces;
 using API_SVsharp.DTO.Response;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API_SVsharp.Controllers
 {
+    [Authorize]
     [Route("Asset")]
     [ApiController]
     public class AssetController : ControllerBase
