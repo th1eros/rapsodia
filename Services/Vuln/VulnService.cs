@@ -99,9 +99,10 @@ namespace API_SVsharp.Services.Vulns
             {
                 var vuln = new Vuln
                 {
-                    Titulo = dto.Titulo,
-                    Ambiente = dto.Ambiente,
-                    Nivel = dto.Nivel
+                    Titulo = dto.Titulo!,
+                    Ambiente = dto.Ambiente!,
+                    Nivel = dto.Nivel!,
+                    Status = dto.Status 
                 };
 
                 _context.Vulns.Add(vuln);
@@ -151,6 +152,7 @@ namespace API_SVsharp.Services.Vulns
                 vuln.Titulo = dto.Titulo ?? vuln.Titulo;
                 vuln.Ambiente = dto.Ambiente ?? vuln.Ambiente;
                 vuln.Nivel = dto.Nivel ?? vuln.Nivel;
+                vuln.Status = dto.Status ?? vuln.Status;
 
                 await _context.SaveChangesAsync();
 

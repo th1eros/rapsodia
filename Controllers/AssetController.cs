@@ -6,10 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 
 namespace API_SVsharp.Controllers
-{
-    [Authorize]
-    [Route("Asset")]
+{    
     [ApiController]
+    [Route("Asset")]
+    [Authorize]
+    
     public class AssetController : ControllerBase
     {
         private readonly IAssetService _assetService;
@@ -86,7 +87,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // POST /api/assets/{id}/vulns/{vulnId}
         // ==============================
-        [HttpPost("Adicionar Vulnerabilidade(s)")]
+        [HttpPost("Adicionar Vulnerabilidade")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> AdicionarVuln(int id, int vulnId)
         {
             var response = await _assetService.AdicionarVulnAoAsset(id, vulnId);
@@ -95,7 +96,7 @@ namespace API_SVsharp.Controllers
         // ==============================
         // POST /api/assets/{id}/vulns/{vulnId}
         // ==============================
-        [HttpDelete("Remover")]
+        [HttpDelete("Remover Vulnerabilidade")]
         public async Task<ActionResult<ResponseModel<bool>>> RemoverVulnDoAsset(int assetId, int vulnId)
         {
             var response = await _assetService.RemoverVulnDoAssetAsync(assetId, vulnId);

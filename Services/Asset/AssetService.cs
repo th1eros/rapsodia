@@ -27,11 +27,14 @@ namespace API_SVsharp.Services.Assets
             {
                 var assets = await _context.Assets.ToListAsync();
 
-                response.Dados = assets.Select(a => new AssetResponseDTO
+                response.Dados = assets.Select(asset => new AssetResponseDTO
                 {
-                    Id = a.Id,
-                    Nome = a.Nome,
-                    CreatedAt = a.CreatedAt
+                    Id = asset.Id,
+                    Nome = asset.Nome,
+                    Tipo = asset.Tipo,
+                    Ambiente = asset.Ambiente,
+                    Habilitado = asset.Habilitado,
+                    CreatedAt = asset.CreatedAt
                 }).ToList();
 
                 response.Status = true;
@@ -68,6 +71,9 @@ namespace API_SVsharp.Services.Assets
                 {
                     Id = asset.Id,
                     Nome = asset.Nome,
+                    Tipo = asset.Tipo,
+                    Ambiente = asset.Ambiente,
+                    Habilitado = asset.Habilitado,
                     CreatedAt = asset.CreatedAt
                 };
 
@@ -122,11 +128,16 @@ namespace API_SVsharp.Services.Assets
                 {
                     Id = asset.Id,
                     Nome = asset.Nome,
+                    Tipo = asset.Tipo,
+                    Ambiente = asset.Ambiente,
+                    Habilitado = asset.Habilitado,
                     CreatedAt = asset.CreatedAt
                 };
 
                 response.Status = true;
-                response.Mensagem = "Vulnerabilidade vinculada com sucesso.";
+                response.Mensagem = existeRelacao
+                    ? "Vulnerabilidade já estava vinculada."
+                    : "Vulnerabilidade vinculada com sucesso.";
             }
             catch (Exception ex)
             {
@@ -150,7 +161,7 @@ namespace API_SVsharp.Services.Assets
                 {
                     Nome = dto.Nome!,
                     Tipo = dto.Tipo!,
-                    Ambiente = dto.Ambiente!,   // obrigatório
+                    Ambiente = dto.Ambiente!,
                     Habilitado = dto.Habilitado
                 };
 
@@ -159,10 +170,12 @@ namespace API_SVsharp.Services.Assets
 
                 response.Dados = new AssetResponseDTO
                 {
-                    Nome = dto.Nome!,
-                    Tipo = dto.Tipo!,
-                    Ambiente = dto.Ambiente!,  
-                    Habilitado = dto.Habilitado
+                    Id = asset.Id,
+                    Nome = asset.Nome,
+                    Tipo = asset.Tipo,
+                    Ambiente = asset.Ambiente,
+                    Habilitado = asset.Habilitado,
+                    CreatedAt = asset.CreatedAt
                 };
 
                 response.Status = true;
@@ -170,14 +183,8 @@ namespace API_SVsharp.Services.Assets
             }
             catch (Exception ex)
             {
-                return new ResponseModel<AssetResponseDTO>
-                {
-                    Status = false,
-                    Mensagem = ex.Message +
-                                (ex.InnerException != null
-                                    ? " | INNER: " + ex.InnerException.Message
-                                    : "")
-                };
+                response.Status = false;
+                response.Mensagem = ex.Message;
             }
 
             return response;
@@ -203,6 +210,9 @@ namespace API_SVsharp.Services.Assets
                 }
 
                 asset.Nome = dto.Nome ?? asset.Nome;
+                asset.Tipo = dto.Tipo ?? asset.Tipo;
+                asset.Ambiente = dto.Ambiente ?? asset.Ambiente;
+                asset.Habilitado = dto.Habilitado ?? asset.Habilitado;
 
                 await _context.SaveChangesAsync();
 
@@ -210,6 +220,9 @@ namespace API_SVsharp.Services.Assets
                 {
                     Id = asset.Id,
                     Nome = asset.Nome,
+                    Tipo = asset.Tipo,
+                    Ambiente = asset.Ambiente,
+                    Habilitado = asset.Habilitado,
                     CreatedAt = asset.CreatedAt
                 };
 
@@ -296,8 +309,8 @@ namespace API_SVsharp.Services.Assets
             }
 
             return response;
-
         }
+
         // ==============================
         // REMOVER VULN DO ASSET
         // ==============================
