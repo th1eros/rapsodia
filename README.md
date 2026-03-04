@@ -113,4 +113,8 @@ http://localhost:5073/swagger/index.html
 📊 Status Atual
 Backend estável.
 Preparado para integração com Front-end.
+<<<<<<< HEAD
 Estrutura pronta para evolução corporativa.
+=======
+Estrutura pronta para evolução corporativa.
+>>>>>>> 92d8cf0aacd6a2d254bddac1d374115857823838
