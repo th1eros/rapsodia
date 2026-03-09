@@ -2,15 +2,13 @@
 using API_SVsharp.Application.Interfaces;
 using API_SVsharp.DTO.Response;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 
 namespace API_SVsharp.Controllers
-{    
+{
     [ApiController]
-    [Route("Asset")]
-    [Authorize]
-    
+    [Route("api/assets")]
+    [AllowAnonymous]
     public class AssetController : ControllerBase
     {
         private readonly IAssetService _assetService;
@@ -20,87 +18,85 @@ namespace API_SVsharp.Controllers
             _assetService = assetService;
         }
 
-        // ==============================
-        // GET 
-        // ==============================
-        [HttpGet("Lista")]
+        // GET: api/assets
+        [HttpGet]
         public async Task<ActionResult<ResponseModel<List<AssetResponseDTO>>>> Listar()
         {
             var response = await _assetService.ListarAssets();
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
-        // ==============================
-        // GET /api/assets/{id}
-        // ==============================
-        [HttpGet("Id")]
-        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> BuscarPorId(int id)
+        // GET: api/assets/1
+        [HttpGet("{id}")]
+        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> BuscarPorId(
+            [FromRoute] int id)
         {
             var response = await _assetService.BuscarAssetPorId(id);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // ==============================
-        // POST /api/assets
-        // ==============================
-        [HttpPost("Criar")]
-        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Criar([FromBody] AssetCriacaoDTO dto)
+        // POST: api/assets
+        [HttpPost]
+        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Criar(
+            [FromBody] AssetCriacaoDTO dto)
         {
             var response = await _assetService.CriarAsset(dto);
 
             if (!response.Status)
                 return BadRequest(response);
 
-            return CreatedAtAction(nameof(BuscarPorId), new { id = response.Dados?.Id }, response);
+            return CreatedAtAction(
+                nameof(BuscarPorId),
+                new { id = response.Dados?.Id },
+                response);
         }
 
-        // ==============================
-        // PUT /api/assets/{id}
-        // ==============================
-        [HttpPut("Editar")]
-        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Editar(int id, [FromBody] EditarAssetDTO dto)
+        // PUT: api/assets/1
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Editar(
+            [FromRoute] int id,
+            [FromBody] EditarAssetDTO dto)
         {
             var response = await _assetService.EditarAsset(id, dto);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // ==============================
-        // PATCH /api/assets/{id}/archive
-        // ==============================
-        [HttpPatch("Arquivar")]
-        public async Task<ActionResult<ResponseModel<bool>>> Arquivar(int id)
+        // PATCH: api/assets/1/archive
+        [HttpPatch("{id}/archive")]
+        public async Task<ActionResult<ResponseModel<bool>>> Arquivar(
+            [FromRoute] int id)
         {
             var response = await _assetService.ArquivarAsset(id);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // ==============================
-        // PATCH /api/assets/{id}/restore
-        // ==============================
-        [HttpPatch("Restauração")]
-        public async Task<ActionResult<ResponseModel<bool>>> Restaurar(int id)
+        // PATCH: api/assets/1/restore
+        [HttpPatch("{id}/restore")]
+        public async Task<ActionResult<ResponseModel<bool>>> Restaurar(
+            [FromRoute] int id)
         {
             var response = await _assetService.RestaurarAsset(id);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // ==============================
-        // POST /api/assets/{id}/vulns/{vulnId}
-        // ==============================
-        [HttpPost("Adicionar Vulnerabilidade")]
-        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> AdicionarVuln(int id, int vulnId)
+        // POST: api/assets/1/vulnerabilities/5
+        [HttpPost("{id}/vulnerabilities/{vulnId}")]
+        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> AdicionarVuln(
+            [FromRoute] int id,
+            [FromRoute] int vulnId)
         {
             var response = await _assetService.AdicionarVulnAoAsset(id, vulnId);
             return response.Status ? Ok(response) : BadRequest(response);
         }
-        // ==============================
-        // POST /api/assets/{id}/vulns/{vulnId}
-        // ==============================
-        [HttpDelete("Remover Vulnerabilidade")]
-        public async Task<ActionResult<ResponseModel<bool>>> RemoverVulnDoAsset(int assetId, int vulnId)
+
+        // DELETE: api/assets/1/vulnerabilities/5
+        [HttpDelete("{id}/vulnerabilities/{vulnId}")]
+        public async Task<ActionResult<ResponseModel<bool>>> RemoverVulnDoAsset(
+            [FromRoute] int id,
+            [FromRoute] int vulnId)
         {
-            var response = await _assetService.RemoverVulnDoAssetAsync(assetId, vulnId);
+            var response = await _assetService.RemoverVulnDoAssetAsync(id, vulnId);
             return response.Status ? Ok(response) : NotFound(response);
         }
     }
-}   
+}

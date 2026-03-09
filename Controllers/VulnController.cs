@@ -1,13 +1,15 @@
 ﻿using API_SVsharp.DTO.Vuln;
-using API_SVsharp.Models.Entity;
 using API_SVsharp.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using API_SVsharp.DTO.Response;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API_SVsharp.Controllers
 {
-    [Route("Vulnerabilidade")]
+    [Route("api/vulns")]
     [ApiController]
+    // 🔓 CTO: Alterado de [Authorize] para [AllowAnonymous] para teste de comunicação
+    [AllowAnonymous]
     public class VulnController : ControllerBase
     {
         private readonly IVulnService _vulnService;
@@ -17,65 +19,61 @@ namespace API_SVsharp.Controllers
             _vulnService = vulnService;
         }
 
-        // ==============================
-        // GET /api/vulns
-        // ==============================
-        [HttpGet("Lista")]
+        // GET: api/vulns
+        [HttpGet]
         public async Task<ActionResult<ResponseModel<List<VulnResponseDTO>>>> Listar()
         {
             var response = await _vulnService.ListarVulns();
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
-        // ==============================
-        // GET /api/vulns/{id}
-        // ==============================
-        [HttpGet("Id")]
-        public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> BuscarPorId(int id)
+        // GET: api/vulns/1
+        [HttpGet("{id}")]
+        public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> BuscarPorId([FromRoute] int id)
         {
             var response = await _vulnService.BuscarVulnPorId(id);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // ==============================
-        // POST /api/vulns
-        // ==============================
-        [HttpPost("Criar")]
-        public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> Criar([FromBody] VulnCriacaoDTO dto)
+        // POST: api/vulns
+        [HttpPost]
+        public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> Criar(
+            [FromBody] VulnCriacaoDTO dto)
         {
             var response = await _vulnService.CriarVuln(dto);
 
             if (!response.Status)
                 return BadRequest(response);
 
-            return CreatedAtAction(nameof(BuscarPorId), new { id = response.Dados?.Id }, response);
+            return CreatedAtAction(
+                nameof(BuscarPorId),
+                new { id = response.Dados?.Id },
+                response);
         }
 
-        // ==============================
-        // PUT /api/vulns/{id}
-        // ==============================
-        [HttpPut("Editar")]
-        public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> Editar(int id, [FromBody] EditarVulnDTO dto)
+        // PUT: api/vulns/1
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> Editar(
+            [FromRoute] int id,
+            [FromBody] EditarVulnDTO dto)
         {
             var response = await _vulnService.EditarVuln(id, dto);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // ==============================
-        // PATCH /api/vulns/{id}/archive
-        // ==============================
-        [HttpPatch("Arquivar")]
-        public async Task<ActionResult<ResponseModel<bool>>> Arquivar(int id)
+        // PATCH: api/vulns/1/archive
+        [HttpPatch("{id}/archive")]
+        public async Task<ActionResult<ResponseModel<bool>>> Arquivar(
+            [FromRoute] int id)
         {
             var response = await _vulnService.ArquivarVuln(id);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // ==============================
-        // PATCH /api/vulns/{id}/restore
-        // ==============================
-        [HttpPatch("Restauração")]
-        public async Task<ActionResult<ResponseModel<bool>>> Restaurar(int id)
+        // PATCH: api/vulns/1/restore
+        [HttpPatch("{id}/restore")]
+        public async Task<ActionResult<ResponseModel<bool>>> Restaurar(
+            [FromRoute] int id)
         {
             var response = await _vulnService.RestaurarVuln(id);
             return response.Status ? Ok(response) : NotFound(response);

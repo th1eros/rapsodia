@@ -99,15 +99,15 @@ Swagger:
 http://localhost:5073/swagger/index.html
 
 🧭 Roadmap
- Arquitetura base 100%
- Soft Delete 100%
- Auditoria automática 100%
- JWT Authentication 100%
- Middleware global de exceção 20%...
+ Arquitetura base 
+ Soft Delete 
+ Auditoria automática
+ JWT Authentication 
+ Middleware global de exceção 
  AutoMapper
  Logging estruturado
  Testes automatizados
- Front-end simples
+ Front-end Objetivo
  Hardening final
 
 📊 Status Atual
