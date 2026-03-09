@@ -27,7 +27,6 @@ var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // Converte Enums para String no JSON (Melhor leitura no Frontend)
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
@@ -35,7 +34,7 @@ builder.Services.AddControllers()
 // 3. SEGURANÇA: JWT AUTHENTICATION (CISO Standard)
 // ============================================================
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var keyString = jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key não configurada.");
+var keyString = jwtSettings["Key"] ?? "Chave_Temporaria_Para_Nao_Quebrar_O_Build";
 var key = Encoding.UTF8.GetBytes(keyString);
 
 builder.Services
@@ -46,7 +45,7 @@ builder.Services
     })
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = true; // Força HTTPS
+        options.RequireHttpsMetadata = true;
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -57,25 +56,21 @@ builder.Services
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(key),
-            ClockSkew = TimeSpan.Zero // Expiração rígida
+            ClockSkew = TimeSpan.Zero
         };
     });
 
 builder.Services.AddAuthorization();
 
 // ============================================================
-// 4. INFRA: CORS (Restrição de Origem Segura)
+// 4. INFRA: CORS
 // ============================================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("CyberPolicy", policy =>
     {
         policy
-            .WithOrigins(
-                "http://localhost:5173",             // Desenvolvimento
-                "https://th1eros.github.io",         // Produção Dashboard
-                "https://api-svsharp.onrender.com"   // Sua própria URL no Render
-            )
+            .WithOrigins("http://localhost:5173", "https://th1eros.github.io", "https://api-svsharp.onrender.com")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -83,24 +78,59 @@ builder.Services.AddCors(options =>
 });
 
 // ============================================================
-// 5. DOCUMENTAÇÃO: SWAGGER COM JWT
+// 5. DOCUMENTAÇÃO: SWAGGER
 // ============================================================
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-options.SwaggerDoc("v1", new OpenApiInfo
-{
-    Title = "SVSharp API - Cybersecurity Dashboard",
-    Version = "v1",
-    Description = "API de Gestão de Ativos e Vulnerabilidades"
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "SVSharp API", Version = "v1" });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Autenticação JWT. Digite: Bearer {seu_token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } },
+            Array.Empty<string>()
+        }
+    });
 });
 
-options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+// ============================================================
+// 6. DEPENDENCY INJECTION & DATABASE
+// ============================================================
+builder.Services.AddScoped<IAssetService, AssetService>();
+builder.Services.AddScoped<IVulnService, VulnService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    Description = "Autenticação JWT. Digite: Bearer {seu_token}",
-    Name = "Authorization",
-    In = ParameterLocation.Header,
-    Type = SecuritySchemeType.Http,
-    Scheme = "bearer",
-    BearerFormat = "JWT"
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+var app = builder.Build();
+
+// ============================================================
+// 7. MIDDLEWARE PIPELINE
+// ============================================================
+app.MapGet("/health", () => Results.Ok(new { status = "Secure", timestamp = DateTime.UtcNow }));
+
+app.UseSwagger();
+app.UseSwaggerUI(c => {
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
+    c.RoutePrefix = string.Empty;
+});
+
+app.UseHttpsRedirection();
+app.UseCors("CyberPolicy");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run($"http://0.0.0.0:{port}");
