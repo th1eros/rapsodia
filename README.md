@@ -1,120 +1,55 @@
-SVsharp 
+# 🛡️ SVsharp - Cyber Assets & Vulnerability Management
 
-📌 Visão do Projeto
-SVsharp é uma API REST corporativa para:
-Gestão de Assets
-Gestão de Vulnerabilidades
-Relacionamento N:N entre entidades
-Controle por Ambiente (DEV / HML / PROD)
-Autenticação e Autorização via JWT
-Soft Delete
-Auditoria automática
-Pronta para integração com Front-end moderno
+SVsharp é uma API REST de nível corporativo projetada para o gerenciamento centralizado de ativos tecnológicos e suas vulnerabilidades. Inspirada nas melhores práticas de segurança do Vale do Silício, a aplicação utiliza uma arquitetura robusta para garantir integridade, auditoria e escalabilidade.
 
-🏗 Arquitetura
-Camadas:
-Controllers → Interface HTTP
-Services → Regras de negócio
-Data → Persistência
-DTOs → Contratos de entrada/saída
-Models → Entidades de domínio
+---
 
-🔐 Segurança
-Autenticação JWT (Bearer)
-Validação de Issuer e Audience
-Expiração configurável
-ClockSkew = 0
-HTTPS habilitado
-Variáveis de ambiente para chave secreta
-Estrutura preparada para Roles/Claims
+## 🚀 Tecnologias Core
+* **Framework:** .NET 8 / ASP.NET Core
+* **Linguagem:** C#
+* **Banco de Dados:** PostgreSQL (com Entity Framework Core)
+* **Segurança:** JWT Bearer Authentication & BCrypt Password Hashing
+* **Documentação:** Swagger (OpenAPI 3.0)
 
-🗄 Banco de Dados
-Tecnologias:
-SQL Server
-Entity Framework Core
-Migrations
-Recursos implementados:
-Relacionamento N:N (Asset ↔ Vuln)
-Soft Delete (DeletedAt)
-Global Query Filters
+---
 
-Auditoria automática:
-CreatedAt
-UpdatedAt
-DeletedAt
-Enums armazenados como string
+## 🏗️ Arquitetura e Padrões
+A API segue uma abordagem de **Separação de Preocupações (SoC)**:
+* **Controllers:** Interface de entrada/saída HTTP.
+* **Services:** Camada de lógica de negócio e regras de segurança.
+* **Data/DbContext:** Persistência de dados com auditoria automatizada.
+* **DTOs:** Contratos de dados para desacoplamento da camada de domínio.
+* **Soft Delete:** Implementado via `DeletedAt` com Global Query Filters.
 
-📂 Estrutura do Projeto
+---
 
-Organização:
+## 🔐 Segurança & Auditoria (CISO Compliance)
+* **Authentication:** Fluxo completo de JWT com validação de Issuer/Audience.
+* **Encryption:** Armazenamento de credenciais utilizando algoritmos de Hash BCrypt.
+* **CORS:** Configurado para integração segura com o Frontend (React/Vite).
+* **Audit Trail:** Rastreabilidade nativa de criação (`CreatedAt`), atualização (`UpdatedAt`) e arquivamento (`DeletedAt`).
 
-API_SVsharp
-│
-├── Controllers
-├── Services
-│   ├── Assets
-│   ├── Vulns
-│   └── Auth
-├── Data
-├── DTO
-├── Models
-└── Mapping
+---
 
-🚀 Funcionalidades
-Assets
-Criar
-Editar
-Listar
-Buscar por ID
-Arquivar
-Restaurar
-Vincular Vulnerabilidade
-Remover vínculo
+## 🗄️ Estrutura do Banco de Dados
+A modelagem suporta relacionamentos complexos:
+* **Asset ↔ Vulnerability:** Relacionamento N:N (Many-to-Many).
+* **Filtros Globais:** Dados "arquivados" são omitidos automaticamente das consultas.
 
-Vulnerabilidades
-Criar
-Editar
-Listar
-Buscar por ID
-Arquivar
-Restaurar
 
-🔑 Configuração JWT
-Exemplo appsettings.json:
-"Jwt": {
-  "Key": "CHAVE_COM_MINIMO_32_CARACTERES",
-  "Issuer": "API_SVsharp",
-  "Audience": "API_SVsharp_Clients",
-  "ExpiresInMinutes": 60
-}
 
-Ou via variável de ambiente:
-Jwt__Key
-🧪 Execução
-dotnet restore
-dotnet build
-dotnet run
+---
 
-Swagger:
-http://localhost:5073/swagger/index.html
+## 🧪 Como Executar
 
-🧭 Roadmap
- Arquitetura base 
- Soft Delete 
- Auditoria automática
- JWT Authentication 
- Middleware global de exceção 
- AutoMapper
- Logging estruturado
- Testes automatizados
- Front-end Objetivo
- Hardening final
+### Pré-requisitos
+* SDK .NET 8.0
+* Instância PostgreSQL ativa
 
-📊 Status Atual
-Backend estável.
-Preparado para integração com Front-end.
-<<<<<<< HEAD
-Estrutura pronta para evolução corporativa.
-=======
-Estrutura pronta para evolução corporativa.
->>>>>>> 92d8cf0aacd6a2d254bddac1d374115857823838
+### Configuração
+1. Clone o repositório.
+2. Configure a string de conexão no `appsettings.json` ou via Variável de Ambiente:
+   `ConnectionStrings__DefaultConnection`
+3. Execute as migrations:
+   ```bash
+   dotnet ef database update
