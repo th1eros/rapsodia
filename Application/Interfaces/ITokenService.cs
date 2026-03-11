@@ -1,6 +1,10 @@
-﻿namespace API_SVsharp.Application.Interfaces;
+﻿using API_SVsharp.Models.Entity;
 
-public interface ITokenService
+namespace API_SVsharp.Application.Interfaces
 {
-    string GenerateToken(string username, string role);
+    public interface ITokenService
+    {
+        // [CTO] Recebe o objeto User completo para extrair Username e Role com segurança
+        string GenerateToken(User user);
+    }
 }

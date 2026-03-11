@@ -1,47 +1,45 @@
-﻿using API_SVsharp.Application.Interfaces;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using API_SVsharp.Application.Interfaces;
+using API_SVsharp.Models.Entity;
+using Microsoft.IdentityModel.Tokens;
 
-namespace API_SVsharp.Services.Auth;
-
-public class TokenService : ITokenService
+namespace API_SVsharp.Services.Auth
 {
-    private readonly IConfiguration _config;
-
-    public TokenService(IConfiguration config)
+    public class TokenService : ITokenService
     {
-        _config = config;
-    }
+        private readonly IConfiguration _config;
 
-    public string GenerateToken(string username, string role)
-    {
-        var jwtSettings = _config.GetSection("Jwt");
-
-        var keyString = jwtSettings["Key"]
-            ?? throw new InvalidOperationException("JWT Key não configurada.");
-
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(keyString));
-
-        var claims = new[]
+        public TokenService(IConfiguration config)
         {
-            new Claim(ClaimTypes.Name, username),
-            new Claim(ClaimTypes.Role, role)
-        };
+            _config = config;
+        }
 
-        var creds = new SigningCredentials(
-            key, SecurityAlgorithms.HmacSha256);
+        public string GenerateToken(User user)
+        {
+            // [CISO] Pega a chave secreta do appsettings.json
+            var keyString = _config["Jwt:Key"] ?? "CHAVE_ULTRA_SECRETA_DETECCAO_DE_VULNERABILIDADES_2026";
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var token = new JwtSecurityToken(
-            issuer: jwtSettings["Issuer"],
-            audience: jwtSettings["Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(
-                int.Parse(jwtSettings["ExpiresInMinutes"]!)),
-            signingCredentials: creds);
+            // [CISO] Payload - Identidade do usuário dentro do token
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Role, user.Role),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };      
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+            var token = new JwtSecurityToken(
+                issuer: _config["Jwt:Issuer"] ?? "SVsharpAPI",
+                audience: _config["Jwt:Audience"] ?? "SVsharpUsers",
+                claims: claims,
+                expires: DateTime.Now.AddHours(8), // [CTO] Token expira em 8h (Segurança)
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
     }
-}
+}   
