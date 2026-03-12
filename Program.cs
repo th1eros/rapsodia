@@ -12,252 +12,234 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CONFIGURAÇÃO DE SERVIÇOS
-// ---------------------------------------------------------
+// ============================================================
+// 1. CONFIGURAÇÃO DE BANCO DE DADOS
+// ============================================================
 
-// [CISO] Extrai a string de conexão com prioridade: Variável de Ambiente > appsettings.json
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-// [CTO] Tradutor de URL do Render para .NET (Render usa formato postgresql://)
+// [CTO] Tradução de URL do Render (postgresql://) para formato .NET
 if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgresql://"))
 {
-    var databaseUri = new Uri(connectionString);
-    var userInfo = databaseUri.UserInfo.Split(':');
+    try
+    {
+        var databaseUri = new Uri(connectionString);
+        var userInfo = databaseUri.UserInfo.Split(':');
 
-    connectionString = $"Host={databaseUri.Host};" +
-                       $"Port={databaseUri.Port};" +
-                       $"Database={databaseUri.AbsolutePath.TrimStart('/')};" +
-                       $"Username={userInfo[0]};" +
-                       $"Password={userInfo[1]};" +
-                       "SslMode=Require;Trust Server Certificate=true;";
+        connectionString = $"Host={databaseUri.Host};" +
+                           $"Port={databaseUri.Port};" +
+                           $"Database={databaseUri.AbsolutePath.TrimStart('/')};" +
+                           $"Username={userInfo[0]};" +
+                           $"Password={userInfo[1]};" +
+                           "SslMode=Require;Trust Server Certificate=true;";
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️ AVISO: Erro ao converter URL do Render: {ex.Message}");
+        // Continua com a string padrão
+    }
 }
 
-// [CISO] Log da configuração do banco (SEM a senha!)
-var dbHostFromConfig = connectionString?.Split(';').FirstOrDefault(x => x.Contains("Host="))?.Replace("Host=", "") ?? "UNKNOWN";
-Console.WriteLine($"[STARTUP] Banco de dados configurado: {dbHostFromConfig}");
-
-// Configurar DbContext com Npgsql
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// [CISO] CORS - Permitir comunicação segura com Frontend
+// ============================================================
+// 2. CORS - Permite requisições do Frontend
+// ============================================================
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy.AllowAnyOrigin()           // Ajuste em produção para origem específica
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
-// [CTO] Registrar serviços de negócio
+// ============================================================
+// 3. INJEÇÃO DE DEPENDÊNCIA (Dependency Injection)
+// ============================================================
+
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IVulnService, VulnService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// [CTO] Configurar Controllers com suporte a JSON e referências cíclicas
-builder.Services.AddControllers().AddJsonOptions(x =>
-    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
+// ============================================================
+// 4. CONFIGURAÇÃO DE AUTENTICAÇÃO JWT
+// ============================================================
 
-// [CISO] Documentação com Swagger
+var jwtKey = builder.Configuration["Jwt:Key"] 
+           ?? Environment.GetEnvironmentVariable("Jwt__Key")
+           ?? "CHAVE_ULTRA_SECRETA_DETECCAO_DE_VULNERABILIDADES_2026";
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] 
+              ?? Environment.GetEnvironmentVariable("Jwt__Issuer")
+              ?? "API_SVsharp";
+
+var jwtAudience = builder.Configuration["Jwt:Audience"]
+                ?? Environment.GetEnvironmentVariable("Jwt__Audience")
+                ?? "API_SVsharp_Clients";
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+// ============================================================
+// 5. CONTROLLERS E JSON
+// ============================================================
+
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(x =>
+        x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
+
+// ============================================================
+// 6. SWAGGER/OPENAPI
+// ============================================================
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo 
     { 
-        Title = "SVSharp API - Gestão de Ativos & Vulnerabilidades", 
+        Title = "SVSharp API - Gestão de Vulnerabilidades", 
         Version = "v1.0",
-        Description = "API REST de nível corporativo para gerenciamento centralizado de ativos tecnológicos e vulnerabilidades."
+        Description = "API corporativa para gerenciamento de ativos e vulnerabilidades",
+        Contact = new OpenApiContact 
+        { 
+            Name = "Equipe de Segurança",
+            Email = "security@svsharp.com"
+        }
     });
-    
-    // [CISO] Suporte a JWT no Swagger
+
+    // [CISO] Configuração do Bearer Token
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header. Exemplo: \"Bearer {token}\"",
+        Description = "JWT Authorization header\nExemplo: Bearer {seu_token_aqui}",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-    
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference 
+                { 
+                    Type = ReferenceType.SecurityScheme, 
+                    Id = "Bearer" 
+                }
             },
-            new string[] {}
+            Array.Empty<string>()
         }
     });
 });
 
+// ============================================================
+// BUILD APPLICATION
+// ============================================================
+
 var app = builder.Build();
 
-// 2. MIDDLEWARE E HEALTH CHECKS (CRÍTICO PARA RENDER)
-// ---------------------------------------------------------
+// ============================================================
+// 7. MIDDLEWARE PIPELINE
+// ============================================================
 
-// [CIO] 🚨 ROTA DE SAÚDE - O RENDER DEPENDE DISSO!
-// Esta rota é verificada continuamente pelo Render durante o deploy
-// Se não responder em 5-10 segundos, o deploy falha
-app.MapGet("/health", async (AppDbContext context) =>
-{
-    try
-    {
-        // Tentar conectar ao banco
-        var canConnect = await context.Database.CanConnectAsync();
-        
-        if (canConnect)
-        {
-            // [CISO] Retorna dados estruturados que o Render entende
-            return Results.Ok(new 
-            { 
-                status = "healthy",
-                timestamp = DateTime.UtcNow,
-                database = "connected",
-                message = "SVSharp API is operational"
-            });
-        }
-        else
-        {
-            return Results.ServiceUnavailable(new 
-            { 
-                status = "unhealthy",
-                database = "disconnected",
-                message = "Database connection failed"
-            });
-        }
-    }
-    catch (Exception ex)
-    {
-        // [CISO] Log de erro para debug
-        Console.WriteLine($"[HEALTH_CHECK_ERROR] {ex.Message}");
-        
-        return Results.ServiceUnavailable(new 
-        { 
-            status = "error",
-            message = ex.Message
-        });
-    }
-})
-.WithName("Health")
-.WithOpenApi()
-.Produces(200)
-.Produces(503);
+// [CISO] Health Check na raiz para Render monitorar
+app.MapGet("/", () => 
+    Results.Json(new 
+    { 
+        status = "✅ API Online",
+        version = "1.0.0",
+        timestamp = DateTime.UtcNow,
+        environment = app.Environment.EnvironmentName
+    }));
 
-// [CIO] Rota de Readiness - Verifica se está pronto para receber tráfego
-app.MapGet("/health/ready", async (AppDbContext context) =>
-{
-    try
-    {
-        // Executar uma query simples para validar conexão de verdade
-        var dbVersion = await context.Database.ExecuteScalarAsync<string>("SELECT version()");
-        
-        return Results.Ok(new 
-        { 
-            status = "ready",
-            database = "responding",
-            version = dbVersion
-        });
-    }
-    catch
-    {
-        return Results.ServiceUnavailable();
-    }
-})
-.WithName("Readiness")
-.WithOpenApi();
+// [CTO] Rota de health check padrão (alguns orquestradores usam /health)
+app.MapGet("/health", () => 
+    Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
-// [CIO] Rota raiz - Informações da API
-app.MapGet("/", () => Results.Ok(new 
-{ 
-    status = "API Online",
-    service = "SVSharp",
-    version = "1.0",
-    message = "Acesse /swagger para documentação",
-    endpoints = new
-    {
-        swagger = "/swagger",
-        health = "/health",
-        readiness = "/health/ready",
-        api = "/api/*"
-    }
-}))
-.WithName("Root")
-.WithOpenApi();
+// ============================================================
+// 8. TESTE DE CONEXÃO COM BANCO
+// ============================================================
 
-// 3. TESTE DE CONEXÃO COM BANCO (EXECUTA APENAS UMA VEZ NO STARTUP)
-// ---------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
-        
-        // [CTO] Teste simples e rápido
-        var canConnect = await context.Database.CanConnectAsync();
-        
-        if (canConnect)
+        if (context.Database.CanConnect())
         {
-            logger.LogInformation("✅ [STARTUP] Conexão com PostgreSQL estabelecida com sucesso!");
-            Console.WriteLine("✅ [STARTUP] Banco de dados: ONLINE");
-            
-            // [CISO] Opcional: Aplicar migrations automaticamente em dev
-            if (app.Environment.IsDevelopment())
-            {
-                logger.LogInformation("[MIGRATION] Aplicando migrations pendentes...");
-                // await context.Database.MigrateAsync(); // Descomente se quiser auto-migrate
-            }
+            Console.WriteLine("✅ [DATABASE] Conexão com PostgreSQL estabelecida com sucesso!");
         }
         else
         {
-            logger.LogWarning("⚠️  [STARTUP] Não foi possível conectar ao PostgreSQL");
-            Console.WriteLine("⚠️  [STARTUP] Banco de dados: OFFLINE (API iniciará, mas sem persistência)");
+            Console.WriteLine("❌ [DATABASE] Falha ao conectar com PostgreSQL!");
         }
     }
     catch (Exception ex)
     {
-        logger.LogError($"❌ [STARTUP] Erro ao conectar no banco: {ex.Message}");
-        Console.WriteLine($"❌ [STARTUP] Erro: {ex.Message}");
-        
-        // [CTO] NÃO falha a aplicação - Render vai tentar reconectar
-        // A aplicação responde ao /health mesmo sem o banco no início
+        Console.WriteLine($"❌ [DATABASE] Erro ao conectar: {ex.GetType().Name} - {ex.Message}");
+        // NÃO lança exceção - deixa a app iniciar mesmo sem DB
     }
 }
 
-// 4. MIDDLEWARE PIPELINE
-// ---------------------------------------------------------
+// ============================================================
+// 9. SWAGGER UI
+// ============================================================
 
-// [CTO] Swagger deve estar disponível ANTES da autenticação
-app.UseSwagger();
-app.UseSwaggerUI(c => 
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
-    c.RoutePrefix = "swagger"; // Força o swagger a ficar em /swagger
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
+        c.RoutePrefix = "swagger";
+        c.DisplayRequestDuration();
+        c.EnableTryItOutByDefault();
+    });
+}
 
-// [CISO] Habilitar CORS para integração com frontend
-app.UseCors("AllowAll");
+// ============================================================
+// 10. MIDDLEWARE ORDER (IMPORTANTE!)
+// ============================================================
 
-// [CISO] Middleware de autenticação e autorização
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseCors("AllowAll");                    // CORS primeiro
+app.UseHttpsRedirection();                  // Redirecionar HTTP → HTTPS (se em HTTPS)
+app.UseAuthentication();                    // Autenticação
+app.UseAuthorization();                     // Autorização
+app.MapControllers();                       // Rotas dos controllers
 
-// [CTO] Mapear todos os controllers
-app.MapControllers();
+// ============================================================
+// 11. INICIALIZAR APLICAÇÃO
+// ============================================================
 
-// 5. LOG DE INICIALIZAÇÃO
-// ---------------------------------------------------------
-Console.WriteLine("╔════════════════════════════════════════════════════════════════╗");
-Console.WriteLine("║                  🛡️  SVSharp API - INICIADA                     ║");
-Console.WriteLine("╠════════════════════════════════════════════════════════════════╣");
-Console.WriteLine($"║ URL: http://localhost:5073                                    ║");
-Console.WriteLine($"║ Swagger: http://localhost:5073/swagger                        ║");
-Console.WriteLine($"║ Health: http://localhost:5073/health                          ║");
-Console.WriteLine($"║ Ambiente: {app.Environment.EnvironmentName,-44} ║");
-Console.WriteLine("╚════════════════════════════════════════════════════════════════╝");
-
-app.Run();
+try
+{
+    Console.WriteLine("🚀 Iniciando SVSharp API...");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"💥 Erro crítico na inicialização: {ex}");
+    throw;
+}
