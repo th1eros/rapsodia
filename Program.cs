@@ -12,11 +12,25 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CONFIGURAÇÃO DE SERVIÇOS (BUILDER)
+// 1. CONFIGURAÇÃO DE SERVIÇOS
 // ---------------------------------------------------------
 
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+// [CTO] Tradutor de URL do Render para .NET
+if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgresql://"))
+{
+    var databaseUri = new Uri(connectionString);
+    var userInfo = databaseUri.UserInfo.Split(':');
+
+    connectionString = $"Host={databaseUri.Host};" +
+                       $"Port={databaseUri.Port};" +
+                       $"Database={databaseUri.AbsolutePath.TrimStart('/')};" +
+                       $"Username={userInfo[0]};" +
+                       $"Password={userInfo[1]};" +
+                       "SslMode=Require;Trust Server Certificate=true;";
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -37,21 +51,17 @@ builder.Services.AddControllers().AddJsonOptions(x =>
     x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 
 builder.Services.AddEndpointsApiExplorer();
-
-// [CTO] Configuração do Swagger com o Botão Authorize
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "SVSharp API", Version = "v1" });
-
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header usando o esquema Bearer. Exemplo: \"Bearer {token}\"",
+        Description = "JWT Authorization header. Exemplo: \"Bearer {token}\"",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -64,23 +74,37 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 2. CRIAÇÃO DO APP
-// ---------------------------------------------------------
 var app = builder.Build();
 
-// 3. CONFIGURAÇÃO DO MIDDLEWARE (ORDEM IMPORTA!)
+// 2. MIDDLEWARE E TESTE DE CONEXÃO
 // ---------------------------------------------------------
 
-app.UseSwagger();
-app.UseSwaggerUI();
+// [CIO] Rota de Health Check (Prioridade máxima para o Render)
+app.MapGet("/", () => Results.Ok(new { status = "API Online", message = "Acesse /swagger para documentação" }));
 
-app.UseCors("AllowAll");
-
-if (!app.Environment.IsDevelopment())
+// [CTO] Teste de conexão no log para o estagiário ver
+using (var scope = app.Services.CreateScope())
 {
-    app.UseHttpsRedirection();
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<AppDbContext>();
+        context.Database.CanConnect();
+        Console.WriteLine("✅ Conexão com o PostgreSQL estabelecida com sucesso!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Erro ao conectar no banco: {ex.Message}");
+    }
 }
 
+app.UseSwagger();
+app.UseSwaggerUI(c => {
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
+    c.RoutePrefix = "swagger"; // Força o swagger a ficar em /swagger
+});
+
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
