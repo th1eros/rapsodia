@@ -1,4 +1,4 @@
-﻿using API_SVsharp.Data;
+using API_SVsharp.Data;
 using API_SVsharp.DTO.Asset;
 using API_SVsharp.DTO.Response;
 using API_SVsharp.Models.Entity;
@@ -16,271 +16,154 @@ namespace API_SVsharp.Services.Assets
             _context = context;
         }
 
-        // ==============================
-        // LISTAR
-        // ==============================
+        // Converte entidade Asset para DTO de resposta.
+        private static AssetResponseDTO ToDTO(Asset a) => new()
+        {
+            Id         = a.Id,
+            Nome       = a.Nome,
+            Tipo       = a.Tipo,
+            Ambiente   = a.Ambiente,
+            Habilitado = a.Habilitado,
+            CreatedAt  = a.CreatedAt
+        };
+
+        // GET — lista todos os assets ativos (soft delete filtrado pelo global query filter).
         public async Task<ResponseModel<List<AssetResponseDTO>>> ListarAssets()
         {
             var response = new ResponseModel<List<AssetResponseDTO>>();
-
             try
             {
                 var assets = await _context.Assets.ToListAsync();
-
-                response.Dados = assets.Select(asset => new AssetResponseDTO
-                {
-                    Id = asset.Id,
-                    Nome = asset.Nome,
-                    Tipo = asset.Tipo,
-                    Ambiente = asset.Ambiente,
-                    Habilitado = asset.Habilitado,
-                    CreatedAt = asset.CreatedAt
-                }).ToList();
-
+                response.Dados  = assets.Select(ToDTO).ToList();
                 response.Status = true;
             }
             catch (Exception ex)
             {
-                response.Status = false;
+                response.Status   = false;
                 response.Mensagem = ex.Message;
             }
-
             return response;
         }
 
-        // ==============================
-        // BUSCAR POR ID
-        // ==============================
+        // GET — busca por ID.
         public async Task<ResponseModel<AssetResponseDTO>> BuscarAssetPorId(int idAsset)
         {
             var response = new ResponseModel<AssetResponseDTO>();
-
             try
             {
-                var asset = await _context.Assets
-                    .FirstOrDefaultAsync(a => a.Id == idAsset);
-
+                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
                 if (asset == null)
                 {
-                    response.Status = false;
+                    response.Status   = false;
                     response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
-
-                response.Dados = new AssetResponseDTO
-                {
-                    Id = asset.Id,
-                    Nome = asset.Nome,
-                    Tipo = asset.Tipo,
-                    Ambiente = asset.Ambiente,
-                    Habilitado = asset.Habilitado,
-                    CreatedAt = asset.CreatedAt
-                };
-
+                response.Dados  = ToDTO(asset);
                 response.Status = true;
             }
             catch (Exception ex)
             {
-                response.Status = false;
+                response.Status   = false;
                 response.Mensagem = ex.Message;
             }
-
             return response;
         }
 
-        // ==============================
-        // VINCULAR VULN AO ASSET
-        // ==============================
-        public async Task<ResponseModel<AssetResponseDTO>> AdicionarVulnAoAsset(int idAsset, int idVuln)
-        {
-            var response = new ResponseModel<AssetResponseDTO>();
-
-            try
-            {
-                var asset = await _context.Assets
-                    .FirstOrDefaultAsync(a => a.Id == idAsset);
-
-                var vuln = await _context.Vulns
-                    .FirstOrDefaultAsync(v => v.Id == idVuln);
-
-                if (asset == null || vuln == null)
-                {
-                    response.Status = false;
-                    response.Mensagem = "Asset ou Vulnerabilidade não encontrados.";
-                    return response;
-                }
-
-                var existeRelacao = await _context.AssetVulns
-                    .AnyAsync(av => av.AssetId == idAsset && av.VulnId == idVuln);
-
-                if (!existeRelacao)
-                {
-                    _context.AssetVulns.Add(new AssetVuln
-                    {
-                        AssetId = idAsset,
-                        VulnId = idVuln
-                    });
-
-                    await _context.SaveChangesAsync();
-                }
-
-                response.Dados = new AssetResponseDTO
-                {
-                    Id = asset.Id,
-                    Nome = asset.Nome,
-                    Tipo = asset.Tipo,
-                    Ambiente = asset.Ambiente,
-                    Habilitado = asset.Habilitado,
-                    CreatedAt = asset.CreatedAt
-                };
-
-                response.Status = true;
-                response.Mensagem = existeRelacao
-                    ? "Vulnerabilidade já estava vinculada."
-                    : "Vulnerabilidade vinculada com sucesso.";
-            }
-            catch (Exception ex)
-            {
-                response.Status = false;
-                response.Mensagem = ex.Message;
-            }
-
-            return response;
-        }
-
-        // ==============================
-        // CRIAR
-        // ==============================
+        // POST — cria novo asset.
         public async Task<ResponseModel<AssetResponseDTO>> CriarAsset(AssetCriacaoDTO dto)
         {
             var response = new ResponseModel<AssetResponseDTO>();
-
             try
             {
                 var asset = new Asset
                 {
-                    Nome = dto.Nome!,
-                    Tipo = dto.Tipo!,
-                    Ambiente = dto.Ambiente!,
+                    Nome      = dto.Nome,
+                    Tipo      = dto.Tipo,
+                    Ambiente  = dto.Ambiente,
                     Habilitado = dto.Habilitado
                 };
 
                 _context.Assets.Add(asset);
                 await _context.SaveChangesAsync();
 
-                response.Dados = new AssetResponseDTO
-                {
-                    Id = asset.Id,
-                    Nome = asset.Nome,
-                    Tipo = asset.Tipo,
-                    Ambiente = asset.Ambiente,
-                    Habilitado = asset.Habilitado,
-                    CreatedAt = asset.CreatedAt
-                };
-
-                response.Status = true;
+                response.Dados    = ToDTO(asset);
+                response.Status   = true;
                 response.Mensagem = "Asset criado com sucesso.";
             }
             catch (Exception ex)
             {
-                response.Status = false;
+                response.Status   = false;
                 response.Mensagem = ex.Message;
             }
-
             return response;
         }
 
-        // ==============================
-        // EDITAR
-        // ==============================
+        // PUT — atualiza apenas os campos informados (PATCH semântico com PUT).
         public async Task<ResponseModel<AssetResponseDTO>> EditarAsset(int idAsset, EditarAssetDTO dto)
         {
             var response = new ResponseModel<AssetResponseDTO>();
-
             try
             {
-                var asset = await _context.Assets
-                    .FirstOrDefaultAsync(a => a.Id == idAsset);
-
+                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
                 if (asset == null)
                 {
-                    response.Status = false;
+                    response.Status   = false;
                     response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
 
-                asset.Nome = dto.Nome ?? asset.Nome;
-                asset.Tipo = dto.Tipo ?? asset.Tipo;
-                asset.Ambiente = dto.Ambiente ?? asset.Ambiente;
-                asset.Habilitado = dto.Habilitado ?? asset.Habilitado;
+                if (dto.Nome      != null) asset.Nome      = dto.Nome;
+                if (dto.Tipo      != null) asset.Tipo      = dto.Tipo.Value;
+                if (dto.Ambiente  != null) asset.Ambiente  = dto.Ambiente.Value;
+                if (dto.Habilitado != null) asset.Habilitado = dto.Habilitado.Value;
 
                 await _context.SaveChangesAsync();
 
-                response.Dados = new AssetResponseDTO
-                {
-                    Id = asset.Id,
-                    Nome = asset.Nome,
-                    Tipo = asset.Tipo,
-                    Ambiente = asset.Ambiente,
-                    Habilitado = asset.Habilitado,
-                    CreatedAt = asset.CreatedAt
-                };
-
-                response.Status = true;
+                response.Dados    = ToDTO(asset);
+                response.Status   = true;
                 response.Mensagem = "Asset atualizado.";
             }
             catch (Exception ex)
             {
-                response.Status = false;
+                response.Status   = false;
                 response.Mensagem = ex.Message;
             }
-
             return response;
         }
 
-        // ==============================
-        // ARQUIVAR (SOFT DELETE)
-        // ==============================
+        // PATCH archive — soft delete via DeletedAt (invisível nas queries normais).
         public async Task<ResponseModel<bool>> ArquivarAsset(int idAsset)
         {
             var response = new ResponseModel<bool>();
-
             try
             {
-                var asset = await _context.Assets
-                    .FirstOrDefaultAsync(a => a.Id == idAsset);
-
+                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
                 if (asset == null)
                 {
-                    response.Status = false;
+                    response.Status   = false;
                     response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
 
                 asset.DeletedAt = DateTime.UtcNow;
-
                 await _context.SaveChangesAsync();
 
-                response.Dados = true;
-                response.Status = true;
+                response.Dados    = true;
+                response.Status   = true;
                 response.Mensagem = "Asset arquivado.";
             }
             catch (Exception ex)
             {
-                response.Status = false;
+                response.Status   = false;
                 response.Mensagem = ex.Message;
             }
-
             return response;
         }
 
-        // ==============================
-        // RESTAURAR
-        // ==============================
+        // PATCH restore — reativa um asset arquivado (IgnoreQueryFilters para enxergar DeletedAt).
         public async Task<ResponseModel<bool>> RestaurarAsset(int idAsset)
         {
             var response = new ResponseModel<bool>();
-
             try
             {
                 var asset = await _context.Assets
@@ -289,55 +172,97 @@ namespace API_SVsharp.Services.Assets
 
                 if (asset == null)
                 {
-                    response.Status = false;
+                    response.Status   = false;
                     response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
 
                 asset.DeletedAt = null;
-
                 await _context.SaveChangesAsync();
 
-                response.Dados = true;
-                response.Status = true;
+                response.Dados    = true;
+                response.Status   = true;
                 response.Mensagem = "Asset restaurado.";
             }
             catch (Exception ex)
             {
-                response.Status = false;
+                response.Status   = false;
                 response.Mensagem = ex.Message;
             }
-
             return response;
         }
 
-        // ==============================
-        // REMOVER VULN DO ASSET
-        // ==============================
+        // POST — vincula uma vulnerabilidade a um asset (N:N).
+        public async Task<ResponseModel<AssetResponseDTO>> AdicionarVulnAoAsset(int idAsset, int idVuln)
+        {
+            var response = new ResponseModel<AssetResponseDTO>();
+            try
+            {
+                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
+                var vuln  = await _context.Vulns.FirstOrDefaultAsync(v  => v.Id == idVuln);
+
+                if (asset == null || vuln == null)
+                {
+                    response.Status   = false;
+                    response.Mensagem = "Asset ou Vulnerabilidade não encontrados.";
+                    return response;
+                }
+
+                var existe = await _context.AssetVulns
+                    .AnyAsync(av => av.AssetId == idAsset && av.VulnId == idVuln);
+
+                if (!existe)
+                {
+                    _context.AssetVulns.Add(new AssetVuln
+                    {
+                        AssetId   = idAsset,
+                        VulnId    = idVuln,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                }
+
+                response.Dados    = ToDTO(asset);
+                response.Status   = true;
+                response.Mensagem = existe ? "Vínculo já existia." : "Vulnerabilidade vinculada.";
+            }
+            catch (Exception ex)
+            {
+                response.Status   = false;
+                response.Mensagem = ex.Message;
+            }
+            return response;
+        }
+
+        // DELETE — remove o vínculo entre asset e vulnerabilidade (hard delete na tabela de junção).
         public async Task<ResponseModel<bool>> RemoverVulnDoAssetAsync(int assetId, int vulnId)
         {
             var response = new ResponseModel<bool>();
-
-            var relacao = await _context.AssetVulns
-                .FirstOrDefaultAsync(x =>
-                    x.AssetId == assetId &&
-                    x.VulnId == vulnId);
-
-            if (relacao == null)
+            try
             {
-                response.Status = false;
-                response.Mensagem = "Vínculo não encontrado.";
-                response.Dados = false;
-                return response;
+                var relacao = await _context.AssetVulns
+                    .FirstOrDefaultAsync(x => x.AssetId == assetId && x.VulnId == vulnId);
+
+                if (relacao == null)
+                {
+                    response.Status   = false;
+                    response.Mensagem = "Vínculo não encontrado.";
+                    response.Dados    = false;
+                    return response;
+                }
+
+                _context.AssetVulns.Remove(relacao);
+                await _context.SaveChangesAsync();
+
+                response.Status   = true;
+                response.Mensagem = "Vínculo removido.";
+                response.Dados    = true;
             }
-
-            _context.AssetVulns.Remove(relacao);
-            await _context.SaveChangesAsync();
-
-            response.Status = true;
-            response.Mensagem = "Vínculo removido com sucesso.";
-            response.Dados = true;
-
+            catch (Exception ex)
+            {
+                response.Status   = false;
+                response.Mensagem = ex.Message;
+            }
             return response;
         }
     }

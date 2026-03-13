@@ -1,4 +1,4 @@
-﻿using API_SVsharp.DTO.Asset;
+using API_SVsharp.DTO.Asset;
 using API_SVsharp.Application.Interfaces;
 using API_SVsharp.DTO.Response;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +8,7 @@ namespace API_SVsharp.Controllers
 {
     [ApiController]
     [Route("api/assets")]
-    [AllowAnonymous]
+    [Authorize] // JWT obrigatório em todas as rotas deste controller.
     public class AssetController : ControllerBase
     {
         private readonly IAssetService _assetService;
@@ -18,7 +18,7 @@ namespace API_SVsharp.Controllers
             _assetService = assetService;
         }
 
-        // GET: api/assets
+        // GET api/assets
         [HttpGet]
         public async Task<ActionResult<ResponseModel<List<AssetResponseDTO>>>> Listar()
         {
@@ -26,74 +26,61 @@ namespace API_SVsharp.Controllers
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
-        // GET: api/assets/1
+        // GET api/assets/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> BuscarPorId(
-            [FromRoute] int id)
+        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> BuscarPorId([FromRoute] int id)
         {
             var response = await _assetService.BuscarAssetPorId(id);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // POST: api/assets
+        // POST api/assets
         [HttpPost]
-        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Criar(
-            [FromBody] AssetCriacaoDTO dto)
+        public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Criar([FromBody] AssetCriacaoDTO dto)
         {
             var response = await _assetService.CriarAsset(dto);
-
-            if (!response.Status)
-                return BadRequest(response);
-
-            return CreatedAtAction(
-                nameof(BuscarPorId),
-                new { id = response.Dados?.Id },
-                response);
+            if (!response.Status) return BadRequest(response);
+            return CreatedAtAction(nameof(BuscarPorId), new { id = response.Dados?.Id }, response);
         }
 
-        // PUT: api/assets/1
+        // PUT api/assets/{id}
         [HttpPut("{id}")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Editar(
-            [FromRoute] int id,
-            [FromBody] EditarAssetDTO dto)
+            [FromRoute] int id, [FromBody] EditarAssetDTO dto)
         {
             var response = await _assetService.EditarAsset(id, dto);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // PATCH: api/assets/1/archive
+        // PATCH api/assets/{id}/archive
         [HttpPatch("{id}/archive")]
-        public async Task<ActionResult<ResponseModel<bool>>> Arquivar(
-            [FromRoute] int id)
+        public async Task<ActionResult<ResponseModel<bool>>> Arquivar([FromRoute] int id)
         {
             var response = await _assetService.ArquivarAsset(id);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // PATCH: api/assets/1/restore
+        // PATCH api/assets/{id}/restore
         [HttpPatch("{id}/restore")]
-        public async Task<ActionResult<ResponseModel<bool>>> Restaurar(
-            [FromRoute] int id)
+        public async Task<ActionResult<ResponseModel<bool>>> Restaurar([FromRoute] int id)
         {
             var response = await _assetService.RestaurarAsset(id);
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // POST: api/assets/1/vulnerabilities/5
+        // POST api/assets/{id}/vulnerabilities/{vulnId}
         [HttpPost("{id}/vulnerabilities/{vulnId}")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> AdicionarVuln(
-            [FromRoute] int id,
-            [FromRoute] int vulnId)
+            [FromRoute] int id, [FromRoute] int vulnId)
         {
             var response = await _assetService.AdicionarVulnAoAsset(id, vulnId);
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
-        // DELETE: api/assets/1/vulnerabilities/5
+        // DELETE api/assets/{id}/vulnerabilities/{vulnId}
         [HttpDelete("{id}/vulnerabilities/{vulnId}")]
         public async Task<ActionResult<ResponseModel<bool>>> RemoverVulnDoAsset(
-            [FromRoute] int id,
-            [FromRoute] int vulnId)
+            [FromRoute] int id, [FromRoute] int vulnId)
         {
             var response = await _assetService.RemoverVulnDoAssetAsync(id, vulnId);
             return response.Status ? Ok(response) : NotFound(response);

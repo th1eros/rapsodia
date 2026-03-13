@@ -1,7 +1,8 @@
-﻿namespace API_SVsharp.Application.DTOs;
-
-public class LoginRequest
+namespace API_SVsharp.Application.DTOs
 {
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
+    public class LoginRequest
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
 }

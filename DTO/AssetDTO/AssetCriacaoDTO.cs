@@ -1,21 +1,19 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using API_SVsharp.Models.Entity;
 
 namespace API_SVsharp.DTO.Asset
 {
     public class AssetCriacaoDTO
     {
-        [Required]
-        [MaxLength(150)]
+        [Required, MaxLength(150)]
         public string Nome { get; set; } = null!;
 
         [Required]
-        [MaxLength(100)]
-        public string Tipo { get; set; } = null!;
+        public TipoAsset Tipo { get; set; }
 
         [Required]
-        [MaxLength(10)]
-        public string Ambiente { get; set; } = null!;
+        public AmbienteVuln Ambiente { get; set; }
 
         public bool Habilitado { get; set; } = true;
     }
-}  
+}

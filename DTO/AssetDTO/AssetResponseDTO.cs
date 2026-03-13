@@ -1,21 +1,16 @@
-﻿using System;
+using API_SVsharp.Models.Entity;
 
 namespace API_SVsharp.DTO.Asset
 {
+    // O JsonStringEnumConverter (registrado no Program.cs) serializa os enums como string.
+    // Frontend TypeScript recebe: { "tipo": "WebApplication", "ambiente": "PROD" }
     public class AssetResponseDTO
     {
-        public int Id { get; set; }
-
-        public string Nome { get; set; } = null!;
-
-        public string Tipo { get; set; } = null!;
-
-        public string Ambiente { get; set; } = null!;
-
-        public bool Habilitado { get; set; } = true;
-
-        public string? Descrição { get; set; }
-
-        public DateTime CreatedAt { get; set; }
+        public int         Id         { get; set; }
+        public string      Nome       { get; set; } = null!;
+        public TipoAsset   Tipo       { get; set; }
+        public AmbienteVuln Ambiente  { get; set; }
+        public bool        Habilitado { get; set; }
+        public DateTime    CreatedAt  { get; set; }
     }
 }

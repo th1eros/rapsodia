@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using API_SVsharp.Models.Entity;
 
 namespace API_SVsharp.DTO.Asset
 {
@@ -7,12 +8,8 @@ namespace API_SVsharp.DTO.Asset
         [MaxLength(150)]
         public string? Nome { get; set; }
 
-        [MaxLength(100)]
-        public string? Tipo { get; set; }
-
-        [MaxLength(10)]
-        public string? Ambiente { get; set; }
-
-        public bool? Habilitado { get; set; }
+        public TipoAsset?   Tipo      { get; set; }
+        public AmbienteVuln? Ambiente  { get; set; }
+        public bool?         Habilitado { get; set; }
     }
 }
