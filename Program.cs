@@ -13,15 +13,13 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // ─── CONNECTION STRING ───────────────────────────────────────────────────────
-// Lê de env var (Render) ou appsettings.json (local).
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection")
                     ?? throw new InvalidOperationException("Connection string não configurada.");
 
-// Traduz formato postgresql:// (Render) para formato Npgsql.
 if (connectionString.StartsWith("postgresql://"))
 {
-    var uri      = new Uri(connectionString);
+    var uri = new Uri(connectionString);
     var userInfo = uri.UserInfo.Split(':');
     connectionString = $"Host={uri.Host};Port={uri.Port};" +
                        $"Database={uri.AbsolutePath.TrimStart('/')};" +
@@ -30,29 +28,29 @@ if (connectionString.StartsWith("postgresql://"))
 }
 
 // ─── JWT KEY ─────────────────────────────────────────────────────────────────
-// NUNCA commitar o valor real. Definir em env var: Jwt__Key no Render.
 var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key")
           ?? builder.Configuration["Jwt:Key"]
           ?? throw new InvalidOperationException("JWT Key não configurada.");
 
-// ─── CORS ─────────────────────────────────────────────────────────────────────
-// Em produção, definir env var CORS_ALLOWED_ORIGIN com a URL do frontend (Vercel/Netlify).
-// Em dev, usa o padrão do Vite: http://localhost:5173.
-var allowedOrigin = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGIN")
-                 ?? builder.Configuration["Cors:AllowedOrigin"]
-                 ?? "http://localhost:5173";
+// ─── CORS (CORREÇÃO ESTRATÉGICA) ──────────────────────────────────────────────
+// [CTO] Permitimos múltiplos domínios para evitar erro 403 no GitHub Pages.
+var allowedOrigins = new[] {
+    "http://localhost:5173",
+    "https://th1eros.github.io" // Seu domínio do GitHub Pages
+};
 
 // ─── BANCO DE DADOS ───────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// ─── CORS ─────────────────────────────────────────────────────────────────────
+// ─── CORS SERVICE ─────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
-        policy.WithOrigins(allowedOrigin)
+        policy.WithOrigins(allowedOrigins) // Aplicando a lista de domínios permitidos
               .AllowAnyMethod()
-              .AllowAnyHeader());
+              .AllowAnyHeader()
+              .AllowCredentials());
 });
 
 // ─── AUTENTICAÇÃO JWT ─────────────────────────────────────────────────────────
@@ -61,13 +59,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
-            ValidAudience            = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 
@@ -79,16 +77,12 @@ builder.Services.AddScoped<IVulnService, VulnService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
 // ─── CONTROLLERS + JSON ───────────────────────────────────────────────────────
-// JsonStringEnumConverter: frontend TypeScript recebe "Alta" em vez de 2.
-// IgnoreCycles: evita loop infinito nas navegações N:N.
 builder.Services.AddControllers().AddJsonOptions(x =>
 {
     x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     x.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-// ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
-// Render usa /health para saber se o container está vivo.
 builder.Services.AddHealthChecks();
 
 // ─── SWAGGER ──────────────────────────────────────────────────────────────────
@@ -99,10 +93,10 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT no header. Exemplo: Bearer {token}",
-        Name        = "Authorization",
-        In          = ParameterLocation.Header,
-        Type        = SecuritySchemeType.ApiKey,
-        Scheme      = "Bearer"
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -119,6 +113,7 @@ builder.Services.AddSwaggerGen(c =>
 // ─── PIPELINE ─────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
+// [CISO] Swagger disponível em todos os ambientes para facilitar seu teste inicial
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -126,26 +121,25 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// Health check para o Render (deve vir antes dos demais middlewares).
 app.MapHealthChecks("/health");
 
-app.UseCors("FrontendPolicy");
+app.UseCors("FrontendPolicy"); // [IMPORTANTE] Deve vir antes de Authentication
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ─── VERIFICAÇÃO DE CONEXÃO NO STARTUP ───────────────────────────────────────
+// ─── VERIFICAÇÃO DE CONEXÃO ──────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         ctx.Database.CanConnect();
-        Console.WriteLine("✅ PostgreSQL conectado.");
+        Console.WriteLine("✅ PostgreSQL conectado com sucesso.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Falha na conexão com o banco: {ex.Message}");
+        Console.WriteLine($"❌ Falha crítica no banco: {ex.Message}");
     }
 }
 
