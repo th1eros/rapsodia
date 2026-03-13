@@ -12,78 +12,89 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── CONNECTION STRING (Lógica Dinâmica para Render/Postgres) ────────────────
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-                    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-                    ?? throw new InvalidOperationException("Connection string não configurada.");
-
-if (connectionString.StartsWith("postgresql://"))
+// 1. CONFIGURAÇÃO DE CORS - DEVE VIR PRIMEIRO (ANTES DE AddControllers)
+// ---------------------------------------------------------
+builder.Services.AddCors(options =>
 {
-    var uri = new Uri(connectionString);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={uri.Port};" +
-                       $"Database={uri.AbsolutePath.TrimStart('/')};" +
-                       $"Username={userInfo[0]};Password={userInfo[1]};" +
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins(
+                "https://th1eros.github.io",
+                "http://localhost:3000",
+                "http://localhost:5173"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
+
+// 2. CONFIGURAÇÃO DE BANCO DE DADOS
+// ---------------------------------------------------------
+
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+// [CTO] Tradutor de URL do Render para .NET
+if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgresql://"))
+{
+    var databaseUri = new Uri(connectionString);
+    var userInfo = databaseUri.UserInfo.Split(':');
+
+    connectionString = $"Host={databaseUri.Host};" +
+                       $"Port={databaseUri.Port};" +
+                       $"Database={databaseUri.AbsolutePath.TrimStart('/')};" +
+                       $"Username={userInfo[0]};" +
+                       $"Password={userInfo[1]};" +
                        "SslMode=Require;Trust Server Certificate=true;";
 }
 
-// ─── JWT KEY ─────────────────────────────────────────────────────────────────
-var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key")
-          ?? builder.Configuration["Jwt:Key"]
-          ?? throw new InvalidOperationException("JWT Key não configurada.");
-
-// ─── CORS SETTINGS (Estratégia Deep Sea) ──────────────────────────────────────
-var allowedOrigins = new[] {
-    "http://localhost:5173",
-    "https://th1eros.github.io"
-};
-
-// ─── SERVICES ────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("FrontendPolicy", policy =>
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader()); // [CISO] Removido Credentials para compatibilidade total
-});
+// 3. INJEÇÃO DE DEPENDÊNCIA
+// ---------------------------------------------------------
+
+builder.Services.AddScoped<IAssetService, AssetService>();
+builder.Services.AddScoped<IVulnService, VulnService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddControllers().AddJsonOptions(x =>
+    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
+
+// 4. AUTENTICAÇÃO JWT
+// ---------------------------------------------------------
+
+var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? builder.Configuration["Jwt:Key"] ?? "CHAVE_ULTRA_SECRETA_DETECCAO_DE_VULNERABILIDADES_2026";
+var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = key,
+            ValidateIssuer = true,
+            ValidIssuer = Environment.GetEnvironmentVariable("Jwt__Issuer") ?? builder.Configuration["Jwt:Issuer"] ?? "API_SVsharp",
+            ValidateAudience = true,
+            ValidAudience = Environment.GetEnvironmentVariable("Jwt__Audience") ?? builder.Configuration["Jwt:Audience"] ?? "API_SVsharp_Clients",
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
         };
     });
 
-builder.Services.AddAuthorization();
-builder.Services.AddScoped<IAssetService, AssetService>();
-builder.Services.AddScoped<IVulnService, VulnService>();
-builder.Services.AddScoped<ITokenService, TokenService>();
+// 5. SWAGGER
+// ---------------------------------------------------------
 
-builder.Services.AddControllers().AddJsonOptions(x =>
-{
-    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-    x.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-});
-
-builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "SVSharp API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT no header. Exemplo: Bearer {token}",
+        Description = "JWT Authorization header. Exemplo: \"Bearer {token}\"",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -96,41 +107,45 @@ builder.Services.AddSwaggerGen(c =>
             {
                 Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
-            Array.Empty<string>()
+            new string[] {}
         }
     });
 });
 
-// ─── HTTP PIPELINE ───────────────────────────────────────────────────────────
 var app = builder.Build();
 
+// 6. MIDDLEWARE E TESTE DE CONEXÃO
+// ---------------------------------------------------------
+
+// [CIO] Rota de Health Check (Prioridade máxima para o Render)
+app.MapGet("/health", () => Results.Ok(new { status = "API Online", message = "Acesse /swagger para documentação" }));
+
 app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
+app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
     c.RoutePrefix = "swagger";
 });
 
-app.MapHealthChecks("/health");
+// [CISO] CORS DEVE VIR ANTES DE UseAuthentication
+app.UseCors("AllowFrontend");
 
-// [IMPORTANTE] A ordem protege a integridade das requisições
-app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ─── DIAGNÓSTICO DE STARTUP ──────────────────────────────────────────────────
+// [CTO] Teste de conexão no log para o estagiário ver
 using (var scope = app.Services.CreateScope())
 {
+    var services = scope.ServiceProvider;
     try
     {
-        var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        ctx.Database.CanConnect();
-        Console.WriteLine("✅ PostgreSQL conectado com sucesso.");
+        var context = services.GetRequiredService<AppDbContext>();
+        context.Database.CanConnect();
+        Console.WriteLine("✅ Conexão com o PostgreSQL estabelecida com sucesso!");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Falha crítica no banco: {ex.Message}");
+        Console.WriteLine($"❌ Erro ao conectar no banco: {ex.Message}");
     }
 }
 
