@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using API_SVsharp.Data;
 using API_SVsharp.DTO.Asset;
 using API_SVsharp.DTO.Response;
@@ -16,36 +20,33 @@ namespace API_SVsharp.Services.Assets
             _context = context;
         }
 
-        // Converte entidade Asset para DTO de resposta.
         private static AssetResponseDTO ToDTO(Asset a) => new()
         {
-            Id         = a.Id,
-            Nome       = a.Nome,
-            Tipo       = a.Tipo,
-            Ambiente   = a.Ambiente,
+            Id = a.Id,
+            Nome = a.Nome,
+            Tipo = a.Tipo,
+            Ambiente = a.Ambiente,
             Habilitado = a.Habilitado,
-            CreatedAt  = a.CreatedAt
+            CreatedAt = a.CreatedAt
         };
 
-        // GET — lista todos os assets ativos (soft delete filtrado pelo global query filter).
         public async Task<ResponseModel<List<AssetResponseDTO>>> ListarAssets()
         {
             var response = new ResponseModel<List<AssetResponseDTO>>();
             try
             {
                 var assets = await _context.Assets.ToListAsync();
-                response.Dados  = assets.Select(ToDTO).ToList();
+                response.Dados = assets.Select(ToDTO).ToList();
                 response.Status = true;
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // GET — busca por ID.
         public async Task<ResponseModel<AssetResponseDTO>> BuscarAssetPorId(int idAsset)
         {
             var response = new ResponseModel<AssetResponseDTO>();
@@ -54,22 +55,21 @@ namespace API_SVsharp.Services.Assets
                 var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
                 if (asset == null)
                 {
-                    response.Status   = false;
+                    response.Status = false;
                     response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
-                response.Dados  = ToDTO(asset);
+                response.Dados = ToDTO(asset);
                 response.Status = true;
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // POST — cria novo asset.
         public async Task<ResponseModel<AssetResponseDTO>> CriarAsset(AssetCriacaoDTO dto)
         {
             var response = new ResponseModel<AssetResponseDTO>();
@@ -77,28 +77,27 @@ namespace API_SVsharp.Services.Assets
             {
                 var asset = new Asset
                 {
-                    Nome      = dto.Nome,
-                    Tipo      = dto.Tipo,
-                    Ambiente  = dto.Ambiente,
+                    Nome = dto.Nome,
+                    Tipo = dto.Tipo,
+                    Ambiente = dto.Ambiente,
                     Habilitado = dto.Habilitado
                 };
 
                 _context.Assets.Add(asset);
                 await _context.SaveChangesAsync();
 
-                response.Dados    = ToDTO(asset);
-                response.Status   = true;
+                response.Dados = ToDTO(asset);
+                response.Status = true;
                 response.Mensagem = "Asset criado com sucesso.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // PUT — atualiza apenas os campos informados (PATCH semântico com PUT).
         public async Task<ResponseModel<AssetResponseDTO>> EditarAsset(int idAsset, EditarAssetDTO dto)
         {
             var response = new ResponseModel<AssetResponseDTO>();
@@ -107,31 +106,29 @@ namespace API_SVsharp.Services.Assets
                 var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
                 if (asset == null)
                 {
-                    response.Status   = false;
+                    response.Status = false;
                     response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
 
-                if (dto.Nome      != null) asset.Nome      = dto.Nome;
-                if (dto.Tipo      != null) asset.Tipo      = dto.Tipo.Value;
-                if (dto.Ambiente  != null) asset.Ambiente  = dto.Ambiente.Value;
+                if (dto.Nome != null) asset.Nome = dto.Nome;
+                if (dto.Tipo != null) asset.Tipo = dto.Tipo.Value;
+                if (dto.Ambiente != null) asset.Ambiente = dto.Ambiente.Value;
                 if (dto.Habilitado != null) asset.Habilitado = dto.Habilitado.Value;
 
                 await _context.SaveChangesAsync();
-
-                response.Dados    = ToDTO(asset);
-                response.Status   = true;
+                response.Dados = ToDTO(asset);
+                response.Status = true;
                 response.Mensagem = "Asset atualizado.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // PATCH archive — soft delete via DeletedAt (invisível nas queries normais).
         public async Task<ResponseModel<bool>> ArquivarAsset(int idAsset)
         {
             var response = new ResponseModel<bool>();
@@ -140,27 +137,25 @@ namespace API_SVsharp.Services.Assets
                 var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
                 if (asset == null)
                 {
-                    response.Status   = false;
+                    response.Status = false;
                     response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
 
                 asset.DeletedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
-
-                response.Dados    = true;
-                response.Status   = true;
+                response.Dados = true;
+                response.Status = true;
                 response.Mensagem = "Asset arquivado.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // PATCH restore — reativa um asset arquivado (IgnoreQueryFilters para enxergar DeletedAt).
         public async Task<ResponseModel<bool>> RestaurarAsset(int idAsset)
         {
             var response = new ResponseModel<bool>();
@@ -172,38 +167,36 @@ namespace API_SVsharp.Services.Assets
 
                 if (asset == null)
                 {
-                    response.Status   = false;
+                    response.Status = false;
                     response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
 
                 asset.DeletedAt = null;
                 await _context.SaveChangesAsync();
-
-                response.Dados    = true;
-                response.Status   = true;
+                response.Dados = true;
+                response.Status = true;
                 response.Mensagem = "Asset restaurado.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // POST — vincula uma vulnerabilidade a um asset (N:N).
         public async Task<ResponseModel<AssetResponseDTO>> AdicionarVulnAoAsset(int idAsset, int idVuln)
         {
             var response = new ResponseModel<AssetResponseDTO>();
             try
             {
                 var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
-                var vuln  = await _context.Vulns.FirstOrDefaultAsync(v  => v.Id == idVuln);
+                var vuln = await _context.Vulns.FirstOrDefaultAsync(v => v.Id == idVuln);
 
                 if (asset == null || vuln == null)
                 {
-                    response.Status   = false;
+                    response.Status = false;
                     response.Mensagem = "Asset ou Vulnerabilidade não encontrados.";
                     return response;
                 }
@@ -215,26 +208,25 @@ namespace API_SVsharp.Services.Assets
                 {
                     _context.AssetVulns.Add(new AssetVuln
                     {
-                        AssetId   = idAsset,
-                        VulnId    = idVuln,
+                        AssetId = idAsset,
+                        VulnId = idVuln,
                         CreatedAt = DateTime.UtcNow
                     });
                     await _context.SaveChangesAsync();
                 }
 
-                response.Dados    = ToDTO(asset);
-                response.Status   = true;
+                response.Dados = ToDTO(asset);
+                response.Status = true;
                 response.Mensagem = existe ? "Vínculo já existia." : "Vulnerabilidade vinculada.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // DELETE — remove o vínculo entre asset e vulnerabilidade (hard delete na tabela de junção).
         public async Task<ResponseModel<bool>> RemoverVulnDoAssetAsync(int assetId, int vulnId)
         {
             var response = new ResponseModel<bool>();
@@ -245,22 +237,21 @@ namespace API_SVsharp.Services.Assets
 
                 if (relacao == null)
                 {
-                    response.Status   = false;
+                    response.Status = false;
                     response.Mensagem = "Vínculo não encontrado.";
-                    response.Dados    = false;
+                    response.Dados = false;
                     return response;
                 }
 
                 _context.AssetVulns.Remove(relacao);
                 await _context.SaveChangesAsync();
-
-                response.Status   = true;
+                response.Status = true;
                 response.Mensagem = "Vínculo removido.";
-                response.Dados    = true;
+                response.Dados = true;
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;

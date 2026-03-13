@@ -11,17 +11,16 @@ namespace API_SVsharp.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        public DbSet<Asset>     Assets    { get; set; }
-        public DbSet<Vuln>      Vulns     { get; set; }
+        public DbSet<Asset> Assets { get; set; }
+        public DbSet<Vuln> Vulns { get; set; }
         public DbSet<AssetVuln> AssetVulns { get; set; }
-        public DbSet<User>      Users     { get; set; }
+        public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // ── IMUTABILIDADE DE CreatedAt ────────────────────────────────────
-            // Impede que o EF sobrescreva CreatedAt em updates.
+            // Imutabilidade: Impede alteração manual do timestamp de criação
             modelBuilder.Entity<Asset>().Property(a => a.CreatedAt)
                 .ValueGeneratedOnAdd().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
             modelBuilder.Entity<Vuln>().Property(v => v.CreatedAt)
@@ -29,14 +28,12 @@ namespace API_SVsharp.Data
             modelBuilder.Entity<User>().Property(u => u.CreatedAt)
                 .ValueGeneratedOnAdd().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
 
-            // ── UNICIDADE DE USERNAME ─────────────────────────────────────────
             modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
 
-            // ── TABELA DE JUNÇÃO N:N ──────────────────────────────────────────
+            // Configuração N:N
             modelBuilder.Entity<AssetVuln>().HasKey(av => new { av.AssetId, av.VulnId });
             modelBuilder.Entity<AssetVuln>().ToTable("assets_vulnerabilidades");
-            modelBuilder.Entity<AssetVuln>().Property(av => av.CreatedAt)
-                .HasDefaultValueSql("NOW()");
+            modelBuilder.Entity<AssetVuln>().Property(av => av.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             modelBuilder.Entity<AssetVuln>()
                 .HasOne(av => av.Asset).WithMany(a => a.AssetVulns)
@@ -46,15 +43,12 @@ namespace API_SVsharp.Data
                 .HasOne(av => av.Vuln).WithMany(v => v.AssetVulns)
                 .HasForeignKey(av => av.VulnId).OnDelete(DeleteBehavior.Restrict);
 
-            // ── SOFT DELETE — GLOBAL QUERY FILTERS ───────────────────────────
-            // Registros com DeletedAt preenchido são invisíveis nas queries padrão.
+            // Filtros Globais: Implementação de Soft Delete
             modelBuilder.Entity<Asset>().HasQueryFilter(a => !a.DeletedAt.HasValue);
-            modelBuilder.Entity<Vuln>().HasQueryFilter(v  => !v.DeletedAt.HasValue);
-            modelBuilder.Entity<User>().HasQueryFilter(u  => !u.DeletedAt.HasValue);
+            modelBuilder.Entity<Vuln>().HasQueryFilter(v => !v.DeletedAt.HasValue);
+            modelBuilder.Entity<User>().HasQueryFilter(u => !u.DeletedAt.HasValue);
 
-            // ── ENUMS COMO STRING ─────────────────────────────────────────────
-            // Armazena o nome do enum (ex: "Alta") em vez do índice numérico.
-            // Garante legibilidade no banco e compatibilidade com o frontend TypeScript.
+            // Conversão de Enums para String (Melhor integração com Frontend/TS)
             modelBuilder.Entity<Vuln>().Property(v => v.Ambiente).HasConversion<string>();
             modelBuilder.Entity<Vuln>().Property(v => v.Nivel).HasConversion<string>();
             modelBuilder.Entity<Vuln>().Property(v => v.Status).HasConversion<string>();
@@ -63,18 +57,16 @@ namespace API_SVsharp.Data
             modelBuilder.Entity<Asset>().Property(a => a.Ambiente).HasConversion<string>();
         }
 
-        // ── AUDITORIA AUTOMÁTICA ──────────────────────────────────────────────
-        // Preenche CreatedAt, UpdatedAt e implementa soft delete no SaveChanges.
         public override int SaveChanges()
         {
             ApplyAudit();
             return base.SaveChanges();
         }
 
-        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
         {
             ApplyAudit();
-            return await base.SaveChangesAsync(cancellationToken);
+            return await base.SaveChangesAsync(ct);
         }
 
         private void ApplyAudit()
@@ -85,19 +77,20 @@ namespace API_SVsharp.Data
             foreach (var entry in entries)
             {
                 if (entry.State == EntityState.Added)
+                {
                     entry.Entity.CreatedAt = now;
-
-                if (entry.State == EntityState.Modified)
+                }
+                else if (entry.State == EntityState.Modified)
                 {
                     entry.Property(nameof(BaseEntity.CreatedAt)).IsModified = false;
                     entry.Entity.UpdatedAt = now;
                 }
-
-                // Intercepta Delete e converte em soft delete (preenche DeletedAt).
-                if (entry.State == EntityState.Deleted)
+                else if (entry.State == EntityState.Deleted)
                 {
+                    // Interceptação: Converte Hard Delete em Soft Delete
                     entry.State = EntityState.Modified;
                     entry.Entity.DeletedAt = now;
+                    entry.Entity.UpdatedAt = now;
                 }
             }
         }

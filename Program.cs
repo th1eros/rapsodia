@@ -12,7 +12,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── CONNECTION STRING ───────────────────────────────────────────────────────
+// ─── CONNECTION STRING (Lógica Dinâmica para Render/Postgres) ────────────────
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection")
                     ?? throw new InvalidOperationException("Connection string não configurada.");
@@ -32,28 +32,24 @@ var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key")
           ?? builder.Configuration["Jwt:Key"]
           ?? throw new InvalidOperationException("JWT Key não configurada.");
 
-// ─── CORS (CORREÇÃO ESTRATÉGICA) ──────────────────────────────────────────────
-// [CTO] Permitimos múltiplos domínios para evitar erro 403 no GitHub Pages.
+// ─── CORS SETTINGS (Estratégia Deep Sea) ──────────────────────────────────────
 var allowedOrigins = new[] {
     "http://localhost:5173",
-    "https://th1eros.github.io" // Seu domínio do GitHub Pages
+    "https://th1eros.github.io"
 };
 
-// ─── BANCO DE DADOS ───────────────────────────────────────────────────────────
+// ─── SERVICES ────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// ─── CORS SERVICE ─────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
-        policy.WithOrigins(allowedOrigins) // Aplicando a lista de domínios permitidos
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials());
+              .AllowAnyHeader()); // [CISO] Removido Credentials para compatibilidade total
 });
 
-// ─── AUTENTICAÇÃO JWT ─────────────────────────────────────────────────────────
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -70,13 +66,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
-
-// ─── SERVIÇOS ─────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IVulnService, VulnService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
-// ─── CONTROLLERS + JSON ───────────────────────────────────────────────────────
 builder.Services.AddControllers().AddJsonOptions(x =>
 {
     x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -84,8 +77,6 @@ builder.Services.AddControllers().AddJsonOptions(x =>
 });
 
 builder.Services.AddHealthChecks();
-
-// ─── SWAGGER ──────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -110,10 +101,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ─── PIPELINE ─────────────────────────────────────────────────────────────────
+// ─── HTTP PIPELINE ───────────────────────────────────────────────────────────
 var app = builder.Build();
 
-// [CISO] Swagger disponível em todos os ambientes para facilitar seu teste inicial
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -123,12 +113,13 @@ app.UseSwaggerUI(c =>
 
 app.MapHealthChecks("/health");
 
-app.UseCors("FrontendPolicy"); // [IMPORTANTE] Deve vir antes de Authentication
+// [IMPORTANTE] A ordem protege a integridade das requisições
+app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ─── VERIFICAÇÃO DE CONEXÃO ──────────────────────────────────────────────────
+// ─── DIAGNÓSTICO DE STARTUP ──────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     try

@@ -16,36 +16,34 @@ namespace API_SVsharp.Services.Vulns
             _context = context;
         }
 
-        // Converte entidade para DTO de resposta.
         private static VulnResponseDTO ToDTO(Vuln v) => new()
         {
-            Id        = v.Id,
-            Titulo    = v.Titulo,
-            Ambiente  = v.Ambiente,
-            Nivel     = v.Nivel,
-            Status    = v.Status,
+            Id = v.Id,
+            Titulo = v.Titulo,
+            Ambiente = v.Ambiente,
+            Nivel = v.Nivel,
+            Status = v.Status,
             CreatedAt = v.CreatedAt
         };
 
-        // GET — lista todas as vulns ativas.
         public async Task<ResponseModel<List<VulnResponseDTO>>> ListarVulns()
         {
             var response = new ResponseModel<List<VulnResponseDTO>>();
             try
             {
-                var vulns   = await _context.Vulns.ToListAsync();
-                response.Dados  = vulns.Select(ToDTO).ToList();
+                // [CTO] O Global Query Filter configurado no DbContext já remove os DeletedAt != null
+                var vulns = await _context.Vulns.ToListAsync();
+                response.Dados = vulns.Select(ToDTO).ToList();
                 response.Status = true;
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // GET — busca por ID.
         public async Task<ResponseModel<VulnResponseDTO>> BuscarVulnPorId(int idVuln)
         {
             var response = new ResponseModel<VulnResponseDTO>();
@@ -54,22 +52,21 @@ namespace API_SVsharp.Services.Vulns
                 var vuln = await _context.Vulns.FirstOrDefaultAsync(v => v.Id == idVuln);
                 if (vuln == null)
                 {
-                    response.Status   = false;
+                    response.Status = false;
                     response.Mensagem = "Vulnerabilidade não encontrada.";
                     return response;
                 }
-                response.Dados  = ToDTO(vuln);
+                response.Dados = ToDTO(vuln);
                 response.Status = true;
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // POST — cria nova vulnerabilidade.
         public async Task<ResponseModel<VulnResponseDTO>> CriarVuln(VulnCriacaoDTO dto)
         {
             var response = new ResponseModel<VulnResponseDTO>();
@@ -77,28 +74,28 @@ namespace API_SVsharp.Services.Vulns
             {
                 var vuln = new Vuln
                 {
-                    Titulo   = dto.Titulo,
+                    Titulo = dto.Titulo,
                     Ambiente = dto.Ambiente,
-                    Nivel    = dto.Nivel,
-                    Status   = dto.Status
+                    Nivel = dto.Nivel,
+                    Status = dto.Status,
+                    CreatedAt = DateTime.UtcNow // [CISO] Garantindo timestamp de auditoria
                 };
 
                 _context.Vulns.Add(vuln);
                 await _context.SaveChangesAsync();
 
-                response.Dados    = ToDTO(vuln);
-                response.Status   = true;
+                response.Dados = ToDTO(vuln);
+                response.Status = true;
                 response.Mensagem = "Vulnerabilidade criada.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // PUT — atualiza apenas os campos informados.
         public async Task<ResponseModel<VulnResponseDTO>> EditarVuln(int idVuln, EditarVulnDTO dto)
         {
             var response = new ResponseModel<VulnResponseDTO>();
@@ -107,32 +104,30 @@ namespace API_SVsharp.Services.Vulns
                 var vuln = await _context.Vulns.FirstOrDefaultAsync(v => v.Id == idVuln);
                 if (vuln == null)
                 {
-                    response.Status   = false;
+                    response.Status = false;
                     response.Mensagem = "Vulnerabilidade não encontrada.";
                     return response;
                 }
 
-                if (dto.Titulo  != null) vuln.Titulo  = dto.Titulo;
+                if (dto.Titulo != null) vuln.Titulo = dto.Titulo;
                 if (dto.Ambiente != null) vuln.Ambiente = dto.Ambiente.Value;
-                if (dto.Nivel   != null) vuln.Nivel   = dto.Nivel.Value;
-                if (dto.Status  != null) vuln.Status  = dto.Status.Value;
+                if (dto.Nivel != null) vuln.Nivel = dto.Nivel.Value;
+                if (dto.Status != null) vuln.Status = dto.Status.Value;
 
                 await _context.SaveChangesAsync();
 
-                response.Dados    = ToDTO(vuln);
-                response.Status   = true;
+                response.Dados = ToDTO(vuln);
+                response.Status = true;
                 response.Mensagem = "Vulnerabilidade atualizada.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // PATCH archive — soft delete via DeletedAt, consistente com Asset.
-        // Correção: antes usava ArchivedAt, que NÃO está no global query filter.
         public async Task<ResponseModel<bool>> ArquivarVuln(int idVuln)
         {
             var response = new ResponseModel<bool>();
@@ -141,53 +136,53 @@ namespace API_SVsharp.Services.Vulns
                 var vuln = await _context.Vulns.FirstOrDefaultAsync(v => v.Id == idVuln);
                 if (vuln == null)
                 {
-                    response.Status   = false;
-                    response.Mensagem = "Vulnerabilidade não encontrada.";
+                    response.Status = false;
+                    response.Mensagem = "Vulnerabilidade não encontrada ou já arquivada.";
                     return response;
                 }
 
-                vuln.DeletedAt = DateTime.UtcNow; // Global query filter a omite das listagens.
+                vuln.DeletedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                response.Dados    = true;
-                response.Status   = true;
-                response.Mensagem = "Vulnerabilidade arquivada.";
+                response.Dados = true;
+                response.Status = true;
+                response.Mensagem = "Vulnerabilidade arquivada com sucesso.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
         }
 
-        // PATCH restore — reativa uma vuln arquivada.
         public async Task<ResponseModel<bool>> RestaurarVuln(int idVuln)
         {
             var response = new ResponseModel<bool>();
             try
             {
+                // [IMPORTANTE] .IgnoreQueryFilters() é necessário para achar itens com DeletedAt preenchido
                 var vuln = await _context.Vulns
                     .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(v => v.Id == idVuln);
 
                 if (vuln == null)
                 {
-                    response.Status   = false;
-                    response.Mensagem = "Vulnerabilidade não encontrada.";
+                    response.Status = false;
+                    response.Mensagem = "Vulnerabilidade não encontrada no arquivo.";
                     return response;
                 }
 
                 vuln.DeletedAt = null;
                 await _context.SaveChangesAsync();
 
-                response.Dados    = true;
-                response.Status   = true;
-                response.Mensagem = "Vulnerabilidade restaurada.";
+                response.Dados = true;
+                response.Status = true;
+                response.Mensagem = "Vulnerabilidade restaurada para o painel principal.";
             }
             catch (Exception ex)
             {
-                response.Status   = false;
+                response.Status = false;
                 response.Mensagem = ex.Message;
             }
             return response;
