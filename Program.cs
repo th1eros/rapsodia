@@ -134,12 +134,15 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
-        context.Database.CanConnect();
-        Console.WriteLine("✅ Conexão com o PostgreSQL estabelecida com sucesso!");
+
+        // O Migrate é o comando mágico que cria as tabelas no Render
+        context.Database.Migrate();
+
+        Console.WriteLine("✅ Banco de dados sincronizado e tabelas prontas!");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Erro ao conectar no banco: {ex.Message}");
+        Console.WriteLine($"❌ Erro ao preparar o banco: {ex.Message}");
     }
 }
 
