@@ -12,20 +12,20 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CONFIGURAÇÃO DE CORS - Ajustada para Produção
+// 1. CONFIGURAÇÃO DE CORS
 // ---------------------------------------------------------
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true) // Resolve o problema do GitHub Pages
+        policy.SetIsOriginAllowed(_ => true) // Essencial para GitHub Pages
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials(); // Necessário para troca de tokens segura
+              .AllowCredentials();
     });
 });
 
-// 2. CONFIGURAÇÃO DE BANCO DE DADOS
+// 2. CONFIGURAÇÃO DE BANCO DE DADOS (RENDER)
 // ---------------------------------------------------------
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection");
@@ -104,27 +104,30 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. MIDDLEWARE - A ORDEM É O QUE RESOLVE O CORS (CISO/CTO)
+// 6. MIDDLEWARE - A ORDEM EXATA QUE RESOLVE O CORS (CISO/CTO)
 // ---------------------------------------------------------
 
-// O CORS DEVE ser um dos primeiros para responder ao navegador antes de qualquer erro
+// Primeiro: Roteamento (Mapa do prédio)
+app.UseRouting();
+
+// Segundo: CORS (Portaria - Agora ele sabe para onde a pessoa vai)
 app.UseCors("AllowAll");
 
+// Terceiro: Auth (Crachá)
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Quarto: Swager e Endpoints
 app.UseSwagger();
 app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
     c.RoutePrefix = "swagger";
 });
 
-// Rota de Health Check
 app.MapGet("/health", () => Results.Ok(new { status = "API Online" }));
-
-app.UseRouting();
-app.UseAuthentication();
-app.UseAuthorization();
 app.MapControllers();
 
-// 7. SINCRONIZAÇÃO DE BANCO (Executa no Startup do Render)
+// 7. SINCRONIZAÇÃO DE BANCO
 // ---------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
@@ -132,7 +135,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
-        context.Database.Migrate(); // Cria as tabelas se não existirem
+        context.Database.Migrate();
         Console.WriteLine("✅ Banco de dados sincronizado e tabelas prontas!");
     }
     catch (Exception ex)
