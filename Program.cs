@@ -12,25 +12,24 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CONFIGURAÇÃO DE CORS - DEVE VIR PRIMEIRO (ANTES DE AddControllers)
+// 1. CONFIGURAÇÃO DE CORS - Ajustada para Produção
 // ---------------------------------------------------------
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin() // Aceita qualquer origem (resolve o erro na hora)
+        policy.SetIsOriginAllowed(_ => true) // Resolve o problema do GitHub Pages
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // Necessário para troca de tokens segura
     });
 });
 
 // 2. CONFIGURAÇÃO DE BANCO DE DADOS
 // ---------------------------------------------------------
-
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-// [CTO] Tradutor de URL do Render para .NET
 if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgresql://"))
 {
     var databaseUri = new Uri(connectionString);
@@ -49,7 +48,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // 3. INJEÇÃO DE DEPENDÊNCIA
 // ---------------------------------------------------------
-
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IVulnService, VulnService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -59,7 +57,6 @@ builder.Services.AddControllers().AddJsonOptions(x =>
 
 // 4. AUTENTICAÇÃO JWT
 // ---------------------------------------------------------
-
 var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? builder.Configuration["Jwt:Key"] ?? "CHAVE_ULTRA_SECRETA_DETECCAO_DE_VULNERABILIDADES_2026";
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
@@ -81,7 +78,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 // 5. SWAGGER
 // ---------------------------------------------------------
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -108,11 +104,11 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. MIDDLEWARE E TESTE DE CONEXÃO
+// 6. MIDDLEWARE - A ORDEM É O QUE RESOLVE O CORS (CISO/CTO)
 // ---------------------------------------------------------
 
-// [CIO] Rota de Health Check (Prioridade máxima para o Render)
-app.MapGet("/health", () => Results.Ok(new { status = "API Online", message = "Acesse /swagger para documentação" }));
+// O CORS DEVE ser um dos primeiros para responder ao navegador antes de qualquer erro
+app.UseCors("AllowAll");
 
 app.UseSwagger();
 app.UseSwaggerUI(c => {
@@ -120,24 +116,23 @@ app.UseSwaggerUI(c => {
     c.RoutePrefix = "swagger";
 });
 
-// [CISO] CORS DEVE VIR ANTES DE UseAuthentication
-app.UseCors("AllowAll");
+// Rota de Health Check
+app.MapGet("/health", () => Results.Ok(new { status = "API Online" }));
 
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// [CTO] Teste de conexão no log para o estagiário ver
+// 7. SINCRONIZAÇÃO DE BANCO (Executa no Startup do Render)
+// ---------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
-
-        // O Migrate é o comando mágico que cria as tabelas no Render
-        context.Database.Migrate();
-
+        context.Database.Migrate(); // Cria as tabelas se não existirem
         Console.WriteLine("✅ Banco de dados sincronizado e tabelas prontas!");
     }
     catch (Exception ex)
