@@ -16,16 +16,11 @@ var builder = WebApplication.CreateBuilder(args);
 // ---------------------------------------------------------
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy
-            .WithOrigins(
-                "https://th1eros.github.io",
-                "http://localhost:3000",
-                "http://localhost:5173"
-            )
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+        policy.AllowAnyOrigin() // Aceita qualquer origem (resolve o erro na hora)
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
@@ -126,7 +121,7 @@ app.UseSwaggerUI(c => {
 });
 
 // [CISO] CORS DEVE VIR ANTES DE UseAuthentication
-app.UseCors("AllowFrontend");
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
