@@ -18,10 +18,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true) // Essencial para GitHub Pages
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+              .AllowAnyHeader();              
     });
 });
 
@@ -35,8 +34,11 @@ if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("post
     var databaseUri = new Uri(connectionString);
     var userInfo = databaseUri.UserInfo.Split(':');
 
+    // CORREÇÃO: Se a porta for -1, usamos a padrão do Postgres (5432)
+    var port = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
+
     connectionString = $"Host={databaseUri.Host};" +
-                       $"Port={databaseUri.Port};" +
+                       $"Port={port};" +
                        $"Database={databaseUri.AbsolutePath.TrimStart('/')};" +
                        $"Username={userInfo[0]};" +
                        $"Password={userInfo[1]};" +
@@ -104,20 +106,20 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. MIDDLEWARE - A ORDEM EXATA QUE RESOLVE O CORS (CISO/CTO)
+// 6. MIDDLEWARE - ORDEM TÉCNICA RESTRITA
 // ---------------------------------------------------------
 
-// Primeiro: Roteamento (Mapa do prédio)
+// A primeira coisa é definir o mapa de rotas
 app.UseRouting();
 
-// Segundo: CORS (Portaria - Agora ele sabe para onde a pessoa vai)
+// Agora que o mapa existe, liberamos a entrada (CORS)
 app.UseCors("AllowAll");
 
-// Terceiro: Auth (Crachá)
+// Agora conferimos quem é o usuário (Auth)
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Quarto: Swager e Endpoints
+// Documentação e Health Check
 app.UseSwagger();
 app.UseSwaggerUI(c => {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
@@ -127,7 +129,7 @@ app.UseSwaggerUI(c => {
 app.MapGet("/health", () => Results.Ok(new { status = "API Online" }));
 app.MapControllers();
 
-// 7. SINCRONIZAÇÃO DE BANCO
+// 7. SINCRONIZAÇÃO AUTOMÁTICA DO BANCO
 // ---------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
