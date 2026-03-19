@@ -31,8 +31,24 @@ namespace API_SVsharp.Services.Vulns
             var response = new ResponseModel<List<VulnResponseDTO>>();
             try
             {
-                // [CTO] O Global Query Filter configurado no DbContext já remove os DeletedAt != null
-                var vulns = await _context.Vulns.ToListAsync();
+                var vulns = await _context.Vulns.Where(v => v.ArchivedAt == null).ToListAsync();
+                response.Dados = vulns.Select(ToDTO).ToList();
+                response.Status = true;
+            }
+            catch (Exception ex)
+            {
+                response.Status = false;
+                response.Mensagem = ex.Message;
+            }
+            return response;
+        }
+
+        public async Task<ResponseModel<List<VulnResponseDTO>>> ListarVulnsArquivadas()
+        {
+            var response = new ResponseModel<List<VulnResponseDTO>>();
+            try
+            {
+                var vulns = await _context.Vulns.Where(v => v.ArchivedAt != null).ToListAsync();
                 response.Dados = vulns.Select(ToDTO).ToList();
                 response.Status = true;
             }
@@ -133,7 +149,7 @@ namespace API_SVsharp.Services.Vulns
             var response = new ResponseModel<bool>();
             try
             {
-                var vuln = await _context.Vulns.FirstOrDefaultAsync(v => v.Id == idVuln);
+                var vuln = await _context.Vulns.FirstOrDefaultAsync(v => v.Id == idVuln && v.ArchivedAt == null);
                 if (vuln == null)
                 {
                     response.Status = false;
@@ -141,7 +157,7 @@ namespace API_SVsharp.Services.Vulns
                     return response;
                 }
 
-                vuln.DeletedAt = DateTime.UtcNow;
+                vuln.ArchivedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
                 response.Dados = true;
@@ -161,10 +177,8 @@ namespace API_SVsharp.Services.Vulns
             var response = new ResponseModel<bool>();
             try
             {
-                // [IMPORTANTE] .IgnoreQueryFilters() é necessário para achar itens com DeletedAt preenchido
                 var vuln = await _context.Vulns
-                    .IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(v => v.Id == idVuln);
+                    .FirstOrDefaultAsync(v => v.Id == idVuln && v.ArchivedAt != null);
 
                 if (vuln == null)
                 {
@@ -173,7 +187,7 @@ namespace API_SVsharp.Services.Vulns
                     return response;
                 }
 
-                vuln.DeletedAt = null;
+                vuln.ArchivedAt = null;
                 await _context.SaveChangesAsync();
 
                 response.Dados = true;

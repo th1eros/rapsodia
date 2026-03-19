@@ -26,6 +26,14 @@ namespace API_SVsharp.Controllers
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
+        // GET api/vulns/archived
+        [HttpGet("archived")]
+        public async Task<ActionResult<ResponseModel<List<VulnResponseDTO>>>> ListarArquivados()
+        {
+            var response = await _vulnService.ListarVulnsArquivadas();
+            return response.Status ? Ok(response) : BadRequest(response);
+        }
+
         // GET api/vulns/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> BuscarPorId([FromRoute] int id)

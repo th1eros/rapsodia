@@ -6,7 +6,8 @@ namespace API_SVsharp.Application.Interfaces
     public interface IAssetService
     {
         Task<ResponseModel<List<AssetResponseDTO>>> ListarAssets();
-        Task<ResponseModel<AssetResponseDTO>>       BuscarAssetPorId(int idAsset);
+        Task<ResponseModel<List<AssetResponseDTO>>> ListarAssetsArquivados();
+        Task<ResponseModel<AssetResponseDTO>> BuscarAssetPorId(int id);
         Task<ResponseModel<AssetResponseDTO>>       CriarAsset(AssetCriacaoDTO dto);
         Task<ResponseModel<AssetResponseDTO>>       EditarAsset(int idAsset, EditarAssetDTO dto);
         Task<ResponseModel<bool>>                   ArquivarAsset(int idAsset);

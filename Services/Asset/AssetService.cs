@@ -35,7 +35,24 @@ namespace API_SVsharp.Services.Assets
             var response = new ResponseModel<List<AssetResponseDTO>>();
             try
             {
-                var assets = await _context.Assets.ToListAsync();
+                var assets = await _context.Assets.Where(a => a.ArchivedAt == null).ToListAsync();
+                response.Dados = assets.Select(ToDTO).ToList();
+                response.Status = true;
+            }
+            catch (Exception ex)
+            {
+                response.Status = false;
+                response.Mensagem = ex.Message;
+            }
+            return response;
+        }
+
+        public async Task<ResponseModel<List<AssetResponseDTO>>> ListarAssetsArquivados()
+        {
+            var response = new ResponseModel<List<AssetResponseDTO>>();
+            try
+            {
+                var assets = await _context.Assets.Where(a => a.ArchivedAt != null).ToListAsync();
                 response.Dados = assets.Select(ToDTO).ToList();
                 response.Status = true;
             }
@@ -52,11 +69,11 @@ namespace API_SVsharp.Services.Assets
             var response = new ResponseModel<AssetResponseDTO>();
             try
             {
-                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
+                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset && a.ArchivedAt == null);
                 if (asset == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset não encontrado.";
+                    response.Mensagem = "Asset não encontrado ou arquivado.";
                     return response;
                 }
                 response.Dados = ToDTO(asset);
@@ -119,7 +136,7 @@ namespace API_SVsharp.Services.Assets
                 await _context.SaveChangesAsync();
                 response.Dados = ToDTO(asset);
                 response.Status = true;
-                response.Mensagem = "Asset atualizado.";
+                response.Mensagem = "Asset editado.";
             }
             catch (Exception ex)
             {
@@ -134,15 +151,15 @@ namespace API_SVsharp.Services.Assets
             var response = new ResponseModel<bool>();
             try
             {
-                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset);
+                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset && a.ArchivedAt == null);
                 if (asset == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset não encontrado.";
+                    response.Mensagem = "Asset não encontrado ou já arquivado.";
                     return response;
                 }
 
-                asset.DeletedAt = DateTime.UtcNow;
+                asset.ArchivedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
                 response.Dados = true;
                 response.Status = true;
@@ -162,17 +179,16 @@ namespace API_SVsharp.Services.Assets
             try
             {
                 var asset = await _context.Assets
-                    .IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(a => a.Id == idAsset);
+                    .FirstOrDefaultAsync(a => a.Id == idAsset && a.ArchivedAt != null);
 
                 if (asset == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset não encontrado.";
+                    response.Mensagem = "Asset não encontrado no arquivo.";
                     return response;
                 }
 
-                asset.DeletedAt = null;
+                asset.ArchivedAt = null;
                 await _context.SaveChangesAsync();
                 response.Dados = true;
                 response.Status = true;

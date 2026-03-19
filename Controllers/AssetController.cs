@@ -26,6 +26,14 @@ namespace API_SVsharp.Controllers
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
+        // GET api/assets/archived
+        [HttpGet("archived")]
+        public async Task<ActionResult<ResponseModel<List<AssetResponseDTO>>>> ListarArquivados()
+        {
+            var response = await _assetService.ListarAssetsArquivados();
+            return response.Status ? Ok(response) : BadRequest(response);
+        }
+
         // GET api/assets/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> BuscarPorId([FromRoute] int id)

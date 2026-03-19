@@ -3,8 +3,6 @@ namespace API_SVsharp.Models.Entity
     // Tabela de junção N:N entre Asset e Vuln.
     // Não herda BaseEntity: vínculos são criados ou removidos (hard delete), nunca auditados individualmente.
     // ⚠️ Rode uma migration após esta alteração:
-    //   dotnet ef migrations add RefactorAssetVuln
-    //   dotnet ef database update
     public class AssetVuln
     {
         public int   AssetId   { get; set; }
