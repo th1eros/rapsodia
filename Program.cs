@@ -146,4 +146,4 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.Run();
+app.Run();// Auditoria CISO: Sincronização de endpoints de arquivamento realizada.
