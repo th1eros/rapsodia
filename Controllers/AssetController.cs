@@ -76,8 +76,8 @@ namespace API_SVsharp.Controllers
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // POST api/assets/{id}/vulnerabilities/{vulnId}
-        [HttpPost("{id}/vulnerabilities/{vulnId}")]
+        // POST api/assets/{id}/vulns/{vulnId}
+        [HttpPost("{id}/vulns/{vulnId}")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> AdicionarVuln(
             [FromRoute] int id, [FromRoute] int vulnId)
         {
@@ -85,8 +85,8 @@ namespace API_SVsharp.Controllers
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
-        // DELETE api/assets/{id}/vulnerabilities/{vulnId}
-        [HttpDelete("{id}/vulnerabilities/{vulnId}")]
+        // DELETE api/assets/{id}/vulns/{vulnId}
+        [HttpDelete("{id}/vulns/{vulnId}")]
         public async Task<ActionResult<ResponseModel<bool>>> RemoverVulnDoAsset(
             [FromRoute] int id, [FromRoute] int vulnId)
         {

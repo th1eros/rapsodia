@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using API_SVsharp.Data;
 using API_SVsharp.DTO.Asset;
+using API_SVsharp.DTO.Vuln;
 using API_SVsharp.DTO.Response;
 using API_SVsharp.Models.Entity;
 using API_SVsharp.Application.Interfaces;
@@ -27,7 +28,16 @@ namespace API_SVsharp.Services.Assets
             Tipo = a.Tipo,
             Ambiente = a.Ambiente,
             Habilitado = a.Habilitado,
-            CreatedAt = a.CreatedAt
+            CreatedAt = a.CreatedAt,
+            Vulnerabilities = a.AssetVulns?.Select(av => new VulnResponseDTO
+            {
+                Id = av.Vuln.Id,
+                Titulo = av.Vuln.Titulo,
+                Ambiente = av.Vuln.Ambiente,
+                Nivel = av.Vuln.Nivel,
+                Status = av.Vuln.Status,
+                CreatedAt = av.Vuln.CreatedAt
+            }).ToList()
         };
 
         public async Task<ResponseModel<List<AssetResponseDTO>>> ListarAssets()
@@ -35,7 +45,12 @@ namespace API_SVsharp.Services.Assets
             var response = new ResponseModel<List<AssetResponseDTO>>();
             try
             {
-                var assets = await _context.Assets.Where(a => a.ArchivedAt == null).ToListAsync();
+                var assets = await _context.Assets
+                    .Include(a => a.AssetVulns)
+                        .ThenInclude(av => av.Vuln)
+                    .Where(a => a.ArchivedAt == null)
+                    .ToListAsync();
+                    
                 response.Dados = assets.Select(ToDTO).ToList();
                 response.Status = true;
             }
@@ -52,7 +67,12 @@ namespace API_SVsharp.Services.Assets
             var response = new ResponseModel<List<AssetResponseDTO>>();
             try
             {
-                var assets = await _context.Assets.Where(a => a.ArchivedAt != null).ToListAsync();
+                var assets = await _context.Assets
+                    .Include(a => a.AssetVulns)
+                        .ThenInclude(av => av.Vuln)
+                    .Where(a => a.ArchivedAt != null)
+                    .ToListAsync();
+                    
                 response.Dados = assets.Select(ToDTO).ToList();
                 response.Status = true;
             }
@@ -69,7 +89,11 @@ namespace API_SVsharp.Services.Assets
             var response = new ResponseModel<AssetResponseDTO>();
             try
             {
-                var asset = await _context.Assets.FirstOrDefaultAsync(a => a.Id == idAsset && a.ArchivedAt == null);
+                var asset = await _context.Assets
+                    .Include(a => a.AssetVulns)
+                        .ThenInclude(av => av.Vuln)
+                    .FirstOrDefaultAsync(a => a.Id == idAsset && a.ArchivedAt == null);
+                    
                 if (asset == null)
                 {
                     response.Status = false;
