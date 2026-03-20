@@ -55,7 +55,10 @@ builder.Services.AddScoped<IVulnService, VulnService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 
 builder.Services.AddControllers().AddJsonOptions(x =>
-    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
+{
+    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    x.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 // 4. AUTENTICAÃ‡ÃƒO JWT
 // ---------------------------------------------------------
@@ -146,4 +149,4 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.Run();// Auditoria CISO: Sincronização de endpoints de arquivamento realizada.
+app.Run();// Auditoria CISO: Sincronizaï¿½ï¿½o de endpoints de arquivamento realizada.
