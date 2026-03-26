@@ -22,6 +22,7 @@ namespace API_SVsharp.Controllers
 
         // GET api/telemetry
         [HttpGet]
+        [AllowAnonymous] // Dashboard público para monitoramento de anomalias
         public async Task<ActionResult<ResponseModel<List<TelemetryResponseDTO>>>> List([FromQuery] int count = 50)
         {
             var response = await _telemetryService.GetLatestTelemetries(count);
