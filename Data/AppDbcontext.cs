@@ -15,6 +15,7 @@ namespace API_SVsharp.Data
         public DbSet<Vuln> Vulns { get; set; }
         public DbSet<AssetVuln> AssetVulns { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<Telemetry> Telemetries { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -26,6 +27,8 @@ namespace API_SVsharp.Data
             modelBuilder.Entity<Vuln>().Property(v => v.CreatedAt)
                 .ValueGeneratedOnAdd().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
             modelBuilder.Entity<User>().Property(u => u.CreatedAt)
+                .ValueGeneratedOnAdd().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+            modelBuilder.Entity<Telemetry>().Property(t => t.CreatedAt)
                 .ValueGeneratedOnAdd().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
 
             modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
@@ -47,6 +50,7 @@ namespace API_SVsharp.Data
             modelBuilder.Entity<Asset>().HasQueryFilter(a => !a.DeletedAt.HasValue);
             modelBuilder.Entity<Vuln>().HasQueryFilter(v => !v.DeletedAt.HasValue);
             modelBuilder.Entity<User>().HasQueryFilter(u => !u.DeletedAt.HasValue);
+            modelBuilder.Entity<Telemetry>().HasQueryFilter(t => !t.DeletedAt.HasValue);
 
             // Conversão de Enums para String (Melhor integração com Frontend/TS)
             modelBuilder.Entity<Vuln>().Property(v => v.Ambiente).HasConversion<string>();

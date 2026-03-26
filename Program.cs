@@ -3,6 +3,7 @@ using API_SVsharp.Application.Interfaces;
 using API_SVsharp.Services.Assets;
 using API_SVsharp.Services.Vulns;
 using API_SVsharp.Services.Auth;
+using API_SVsharp.Services.Telemetries;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -53,6 +54,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IVulnService, VulnService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ITelemetryService, TelemetryService>();
 
 builder.Services.AddControllers().AddJsonOptions(x =>
 {
