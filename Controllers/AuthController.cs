@@ -29,9 +29,32 @@ namespace API_SVsharp.Controllers
         public async Task<ActionResult> Register([FromBody] LoginRequest request)
         {
             _logger.LogInformation("Tentativa de registro para o usuário: {Username}", request.Username);
-...
+
+            // Validação de Entropia (Criterio CISO/CTO: Lógica e Probabilidade)
+            if (!IsPasswordStrong(request.Password))
+            {
+                _logger.LogWarning("Senha fraca fornecida para o usuário: {Username}", request.Username);
+                return BadRequest(new { message = "A senha não atende aos critérios de entropia: deve conter letras maiúsculas, minúsculas, números e caracteres especiais." });
+            }
+
+            if (await _context.Users.AnyAsync(u => u.Username == request.Username))
+                return Conflict(new { message = "Usuário já existe." });
+
+            // Se for o primeiro usuário, define como Admin
+            var isFirstUser = !await _context.Users.AnyAsync();
+
+            var user = new User
+            {
+                Username     = request.Username,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                Role         = isFirstUser ? "Admin" : "Analyst"
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
             _logger.LogInformation("Usuário {Username} criado com sucesso como {Role}.", request.Username, user.Role);
-            return Ok(new { message = $"Usuário criado com sucesso como {(isFirstUser ? "Admin" : "Analyst")}." });
+            return Ok(new { message = $"Usuário criado com sucesso como {user.Role}." });
         }
 
         // POST api/auth/login

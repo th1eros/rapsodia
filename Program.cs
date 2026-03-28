@@ -24,9 +24,6 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
-logger.LogInformation("🚀 SVSharp API — Iniciando setup do sistema...");
-
 // 1. CONFIGURAÇÃO DE CORS (Whitelist)
 // ---------------------------------------------------------
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
@@ -100,17 +97,15 @@ builder.Services.AddRateLimiter(options =>
 // ---------------------------------------------------------
 var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? builder.Configuration["Jwt:Key"];
 
-if (string.IsNullOrEmpty(jwtKey))
-{
-    logger.LogCritical("❌ ERRO CRÍTICO: Chave JWT não configurada (Jwt__Key). A API não pode iniciar.");
-    throw new InvalidOperationException("Configuração Jwt:Key é obrigatória para segurança da aplicação.");
-}
-
-var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+var key = !string.IsNullOrEmpty(jwtKey) 
+    ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    : null;
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        if (key == null) throw new InvalidOperationException("Chave JWT não configurada.");
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -151,6 +146,9 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("🚀 SVSharp API — Iniciando setup do sistema...");
 
 // 7. MIDDLEWARE - GLOBAL ERROR HANDLING
 // ---------------------------------------------------------
@@ -193,7 +191,8 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "no-referrer");
-    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'");
+    // CSP ajustada: permite inline scripts/styles necessários para Swagger e SPAs modernos
+    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
     await next();
 });
 
