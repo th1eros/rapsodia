@@ -9,16 +9,19 @@ using API_SVsharp.DTO.Response;
 using API_SVsharp.Models.Entity;
 using API_SVsharp.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace API_SVsharp.Services.Assets
 {
     public class AssetService : IAssetService
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<AssetService> _logger;
 
-        public AssetService(AppDbContext context)
+        public AssetService(AppDbContext context, ILogger<AssetService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         private static AssetResponseDTO ToDTO(Asset a) => new()
@@ -56,8 +59,9 @@ namespace API_SVsharp.Services.Assets
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao listar assets ativos.");
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Erro ao recuperar lista de assets.";
             }
             return response;
         }
@@ -78,8 +82,9 @@ namespace API_SVsharp.Services.Assets
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao listar assets arquivados.");
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Erro ao recuperar arquivo de assets.";
             }
             return response;
         }
@@ -92,12 +97,12 @@ namespace API_SVsharp.Services.Assets
                 var asset = await _context.Assets
                     .Include(a => a.AssetVulns)
                         .ThenInclude(av => av.Vuln)
-                    .FirstOrDefaultAsync(a => a.Id == idAsset && a.ArchivedAt == null);
+                    .FirstOrDefaultAsync(a => a.Id == idAsset);
                     
                 if (asset == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset não encontrado ou arquivado.";
+                    response.Mensagem = "Asset não encontrado.";
                     return response;
                 }
                 response.Dados = ToDTO(asset);
@@ -105,8 +110,9 @@ namespace API_SVsharp.Services.Assets
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao buscar asset {Id}.", idAsset);
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Erro interno ao buscar asset.";
             }
             return response;
         }
@@ -116,9 +122,29 @@ namespace API_SVsharp.Services.Assets
             var response = new ResponseModel<AssetResponseDTO>();
             try
             {
+                // 1. Sanitização
+                var nomeSanitizado = dto.Nome?.Trim();
+
+                // 2. Validação de Regra de Negócio
+                if (string.IsNullOrWhiteSpace(nomeSanitizado))
+                {
+                    response.Status = false;
+                    response.Mensagem = "O nome do asset é obrigatório.";
+                    return response;
+                }
+
+                var existe = await _context.Assets.AnyAsync(a => a.Nome.ToLower() == nomeSanitizado.ToLower());
+                if (existe)
+                {
+                    response.Status = false;
+                    response.Mensagem = $"Já existe um asset cadastrado com o nome '{nomeSanitizado}'.";
+                    return response;
+                }
+
+                // 3. Persistência
                 var asset = new Asset
                 {
-                    Nome = dto.Nome,
+                    Nome = nomeSanitizado,
                     Tipo = dto.Tipo,
                     Ambiente = dto.Ambiente,
                     Habilitado = dto.Habilitado
@@ -127,14 +153,17 @@ namespace API_SVsharp.Services.Assets
                 _context.Assets.Add(asset);
                 await _context.SaveChangesAsync();
 
+                _logger.LogInformation("Asset '{Nome}' criado com ID {Id}.", asset.Nome, asset.Id);
+
                 response.Dados = ToDTO(asset);
                 response.Status = true;
                 response.Mensagem = "Asset criado com sucesso.";
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao criar asset.");
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Falha técnica ao criar o asset.";
             }
             return response;
         }
@@ -152,20 +181,43 @@ namespace API_SVsharp.Services.Assets
                     return response;
                 }
 
-                if (dto.Nome != null) asset.Nome = dto.Nome;
+                if (dto.Nome != null) 
+                {
+                    var nomeNovo = dto.Nome.Trim();
+                    if (string.IsNullOrWhiteSpace(nomeNovo))
+                    {
+                        response.Status = false;
+                        response.Mensagem = "O nome não pode ser vazio.";
+                        return response;
+                    }
+
+                    var duplicado = await _context.Assets.AnyAsync(a => a.Nome.ToLower() == nomeNovo.ToLower() && a.Id != idAsset);
+                    if (duplicado)
+                    {
+                        response.Status = false;
+                        response.Mensagem = "Este nome já está em uso por outro asset.";
+                        return response;
+                    }
+                    asset.Nome = nomeNovo;
+                }
+
                 if (dto.Tipo != null) asset.Tipo = dto.Tipo.Value;
                 if (dto.Ambiente != null) asset.Ambiente = dto.Ambiente.Value;
                 if (dto.Habilitado != null) asset.Habilitado = dto.Habilitado.Value;
 
                 await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Asset {Id} atualizado.", idAsset);
+
                 response.Dados = ToDTO(asset);
                 response.Status = true;
-                response.Mensagem = "Asset editado.";
+                response.Mensagem = "Asset atualizado com sucesso.";
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao editar asset {Id}.", idAsset);
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Erro ao salvar alterações do asset.";
             }
             return response;
         }
@@ -185,14 +237,18 @@ namespace API_SVsharp.Services.Assets
 
                 asset.ArchivedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
+
+                _logger.LogWarning("Asset {Id} movido para o arquivo.", idAsset);
+
                 response.Dados = true;
                 response.Status = true;
                 response.Mensagem = "Asset arquivado.";
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao arquivar asset {Id}.", idAsset);
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Falha ao processar arquivamento.";
             }
             return response;
         }
@@ -214,14 +270,18 @@ namespace API_SVsharp.Services.Assets
 
                 asset.ArchivedAt = null;
                 await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Asset {Id} restaurado com sucesso.", idAsset);
+
                 response.Dados = true;
                 response.Status = true;
                 response.Mensagem = "Asset restaurado.";
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao restaurar asset {Id}.", idAsset);
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Erro técnico ao restaurar asset.";
             }
             return response;
         }
@@ -253,16 +313,18 @@ namespace API_SVsharp.Services.Assets
                         CreatedAt = DateTime.UtcNow
                     });
                     await _context.SaveChangesAsync();
+                    _logger.LogInformation("Vulnerabilidade {VulnId} vinculada ao Asset {AssetId}.", idVuln, idAsset);
                 }
 
                 response.Dados = ToDTO(asset);
                 response.Status = true;
-                response.Mensagem = existe ? "Vínculo já existia." : "Vulnerabilidade vinculada.";
+                response.Mensagem = existe ? "Vínculo já existe." : "Vulnerabilidade vinculada com sucesso.";
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao vincular vuln {VulnId} ao asset {AssetId}.", idVuln, idAsset);
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Erro ao processar vínculo.";
             }
             return response;
         }
@@ -285,14 +347,18 @@ namespace API_SVsharp.Services.Assets
 
                 _context.AssetVulns.Remove(relacao);
                 await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Vínculo removido entre Asset {AssetId} e Vuln {VulnId}.", assetId, vulnId);
+
                 response.Status = true;
                 response.Mensagem = "Vínculo removido.";
                 response.Dados = true;
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao remover vínculo entre asset {AssetId} e vuln {VulnId}.", assetId, vulnId);
                 response.Status = false;
-                response.Mensagem = ex.Message;
+                response.Mensagem = "Erro ao desfazer vínculo.";
             }
             return response;
         }

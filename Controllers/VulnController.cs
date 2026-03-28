@@ -12,10 +12,12 @@ namespace API_SVsharp.Controllers
     public class VulnController : ControllerBase
     {
         private readonly IVulnService _vulnService;
+        private readonly ILogger<VulnController> _logger;
 
-        public VulnController(IVulnService vulnService)
+        public VulnController(IVulnService vulnService, ILogger<VulnController> logger)
         {
             _vulnService = vulnService;
+            _logger = logger;
         }
 
         // GET api/vulns
@@ -44,6 +46,7 @@ namespace API_SVsharp.Controllers
 
         // POST api/vulns
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> Criar([FromBody] VulnCriacaoDTO dto)
         {
             var response = await _vulnService.CriarVuln(dto);
@@ -53,6 +56,7 @@ namespace API_SVsharp.Controllers
 
         // PUT api/vulns/{id}
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<VulnResponseDTO>>> Editar(
             [FromRoute] int id, [FromBody] EditarVulnDTO dto)
         {
@@ -62,6 +66,7 @@ namespace API_SVsharp.Controllers
 
         // PATCH api/vulns/{id}/archive
         [HttpPatch("{id}/archive")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<bool>>> Arquivar([FromRoute] int id)
         {
             var response = await _vulnService.ArquivarVuln(id);
@@ -70,6 +75,7 @@ namespace API_SVsharp.Controllers
 
         // PATCH api/vulns/{id}/restore
         [HttpPatch("{id}/restore")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<bool>>> Restaurar([FromRoute] int id)
         {
             var response = await _vulnService.RestaurarVuln(id);

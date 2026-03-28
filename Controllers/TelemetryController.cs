@@ -14,10 +14,12 @@ namespace API_SVsharp.Controllers
     public class TelemetryController : ControllerBase
     {
         private readonly ITelemetryService _telemetryService;
+        private readonly ILogger<TelemetryController> _logger;
 
-        public TelemetryController(ITelemetryService telemetryService)
+        public TelemetryController(ITelemetryService telemetryService, ILogger<TelemetryController> logger)
         {
             _telemetryService = telemetryService;
+            _logger = logger;
         }
 
         // GET api/telemetry

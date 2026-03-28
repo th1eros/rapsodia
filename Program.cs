@@ -11,22 +11,39 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics;
+using API_SVsharp.DTO.Response;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CONFIGURAÇÃO DE CORS
+// 0. LOGGING E CONFIGURAÇÃO INICIAL
 // ---------------------------------------------------------
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
+logger.LogInformation("🚀 SVSharp API — Iniciando setup do sistema...");
+
+// 1. CONFIGURAÇÃO DE CORS (Whitelist)
+// ---------------------------------------------------------
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
+                    ?? new[] { "http://localhost:3000", "http://localhost:5173" }; 
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("DefaultPolicy", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true)
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
-              .AllowAnyHeader();              
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
-// 2. CONFIGURAÇÃO DE BANCO DE DADOS (RENDER)
+// 2. CONFIGURAÇÃO DE BANCO DE DADOS (RENDER / LOCAL)
 // ---------------------------------------------------------
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection");
@@ -35,16 +52,9 @@ if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("post
 {
     var databaseUri = new Uri(connectionString);
     var userInfo = databaseUri.UserInfo.Split(':');
-
-    // CORREÇÃO: Se a porta for -1, usamos a padrão do Postgres (5432)
     var port = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
 
-    connectionString = $"Host={databaseUri.Host};" +
-                       $"Port={port};" +
-                       $"Database={databaseUri.AbsolutePath.TrimStart('/')};" +
-                       $"Username={userInfo[0]};" +
-                       $"Password={userInfo[1]};" +
-                       "SslMode=Require;Trust Server Certificate=true;";
+    connectionString = $"Host={databaseUri.Host};Port={port};Database={databaseUri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;Trust Server Certificate=true;";
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -64,9 +74,38 @@ builder.Services.AddControllers().AddJsonOptions(x =>
     x.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
-// 4. AUTENTICAÇÃO JWT
+// 4. RATE LIMITING
 // ---------------------------------------------------------
-var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? builder.Configuration["Jwt:Key"] ?? "CHAVE_ULTRA_SECRETA_DETECCAO_DE_VULNERABILIDADES_2026";
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("auth-limit", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 5;
+        opt.QueueLimit = 0;
+    });
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(new ResponseModel<object> 
+        { 
+            Status = false, 
+            Mensagem = "Muitas tentativas. Tente novamente em 1 minuto." 
+        }, token);
+    };
+});
+
+// 5. AUTENTICAÇÃO JWT
+// ---------------------------------------------------------
+var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? builder.Configuration["Jwt:Key"];
+
+if (string.IsNullOrEmpty(jwtKey))
+{
+    logger.LogCritical("❌ ERRO CRÍTICO: Chave JWT não configurada (Jwt__Key). A API não pode iniciar.");
+    throw new InvalidOperationException("Configuração Jwt:Key é obrigatória para segurança da aplicação.");
+}
+
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -85,7 +124,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// 5. SWAGGER
+// 6. SWAGGER
 // ---------------------------------------------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -113,30 +152,70 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. MIDDLEWARE - ORDEM TÉCNICA RESTRITA
+// 7. MIDDLEWARE - GLOBAL ERROR HANDLING
 // ---------------------------------------------------------
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
+        var exception = exceptionHandlerPathFeature?.Error;
 
-// A primeira coisa é definir o mapa de rotas
+        var localLogger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        localLogger.LogError(exception, "❌ EXCEÇÃO NÃO TRATADA: {Message}", exception?.Message);
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var response = new ResponseModel<object>
+        {
+            Status = false,
+            Mensagem = app.Environment.IsDevelopment() 
+                ? $"Erro Interno: {exception?.Message}" 
+                : "Ocorreu um erro interno no servidor. Por favor, tente novamente mais tarde."
+        };
+
+        await context.Response.WriteAsJsonAsync(response);
+    });
+});
+
+// 8. MIDDLEWARE - PIPELINE
+// ---------------------------------------------------------
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+    app.UseHsts();
+}
+
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers.Append("Referrer-Policy", "no-referrer");
+    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'");
+    await next();
+});
+
 app.UseRouting();
-
-// Agora que o mapa existe, liberamos a entrada (CORS)
-app.UseCors("AllowAll");
-
-// Agora conferimos quem é o usuário (Auth)
+app.UseCors("DefaultPolicy");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Documentação e Health Check
-app.UseSwagger();
-app.UseSwaggerUI(c => {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
-    c.RoutePrefix = "swagger";
-});
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
+        c.RoutePrefix = "swagger";
+    });
+}
 
-app.MapGet("/health", () => Results.Ok(new { status = "API Online" }));
+app.MapGet("/health", () => Results.Ok(new { status = "API Online", timestamp = DateTime.UtcNow }));
 app.MapControllers();
 
-// 7. SINCRONIZAÇÃO AUTOMÁTICA DO BANCO
+// 9. SINCRONIZAÇÃO AUTOMÁTICA DO BANCO
 // ---------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
@@ -145,12 +224,12 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
-        Console.WriteLine("✅ Banco de dados sincronizado e tabelas prontas!");
+        logger.LogInformation("✅ Banco de dados sincronizado e tabelas prontas!");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Erro ao preparar o banco: {ex.Message}");
+        logger.LogCritical(ex, "❌ ERRO AO PREPARAR O BANCO: {Message}", ex.Message);
     }
 }
 
-app.Run();// Auditoria CISO: Sincroniza��o de endpoints de arquivamento realizada.
+app.Run();

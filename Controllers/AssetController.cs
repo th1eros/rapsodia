@@ -12,10 +12,12 @@ namespace API_SVsharp.Controllers
     public class AssetController : ControllerBase
     {
         private readonly IAssetService _assetService;
+        private readonly ILogger<AssetController> _logger;
 
-        public AssetController(IAssetService assetService)
+        public AssetController(IAssetService assetService, ILogger<AssetController> logger)
         {
             _assetService = assetService;
+            _logger = logger;
         }
 
         // GET api/assets
@@ -44,6 +46,7 @@ namespace API_SVsharp.Controllers
 
         // POST api/assets
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Criar([FromBody] AssetCriacaoDTO dto)
         {
             var response = await _assetService.CriarAsset(dto);
@@ -53,6 +56,7 @@ namespace API_SVsharp.Controllers
 
         // PUT api/assets/{id}
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> Editar(
             [FromRoute] int id, [FromBody] EditarAssetDTO dto)
         {
@@ -62,6 +66,7 @@ namespace API_SVsharp.Controllers
 
         // PATCH api/assets/{id}/archive
         [HttpPatch("{id}/archive")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<bool>>> Arquivar([FromRoute] int id)
         {
             var response = await _assetService.ArquivarAsset(id);
@@ -70,6 +75,7 @@ namespace API_SVsharp.Controllers
 
         // PATCH api/assets/{id}/restore
         [HttpPatch("{id}/restore")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<bool>>> Restaurar([FromRoute] int id)
         {
             var response = await _assetService.RestaurarAsset(id);
@@ -78,6 +84,7 @@ namespace API_SVsharp.Controllers
 
         // POST api/assets/{id}/vulns/{vulnId}
         [HttpPost("{id}/vulns/{vulnId}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<AssetResponseDTO>>> AdicionarVuln(
             [FromRoute] int id, [FromRoute] int vulnId)
         {
@@ -87,6 +94,7 @@ namespace API_SVsharp.Controllers
 
         // DELETE api/assets/{id}/vulns/{vulnId}
         [HttpDelete("{id}/vulns/{vulnId}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<bool>>> RemoverVulnDoAsset(
             [FromRoute] int id, [FromRoute] int vulnId)
         {
