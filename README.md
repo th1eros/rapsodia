@@ -17,7 +17,7 @@ The system follows a **Modular Monolith** approach with a clear separation of co
 
 ## 🛠️ Technology Stack & Decisions
 
-- **Framework:** .NET 9.0 (ASP.NET Core Web API).
+- **Framework:** .NET 8.0 (ASP.NET Core Web API).
 - **Database:** PostgreSQL (Cloud-native, ACID compliant).
 - **ORM:** Entity Framework Core (Code-First approach).
 - **Security:** JWT (JSON Web Tokens) with HS256 algorithm.
