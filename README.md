@@ -1,6 +1,6 @@
 # 🛡️ SVSharp — Enterprise Cyber Assets & Vulnerability Management (ECVM)
 
-A high-performance, secure, and scalable RESTful API designed for centralized management of IT assets and security vulnerabilities. Built with **.NET 9** (Long Term Support) following modern software engineering principles.
+A high-performance, secure, and scalable RESTful API designed for centralized management of IT assets and security vulnerabilities. Built with **.NET 8** (Long Term Support) following modern software engineering principles.
 
 ---
 
