@@ -27,7 +27,7 @@ builder.Logging.AddDebug();
 // 1. CONFIGURAÇÃO DE CORS (Whitelist)
 // ---------------------------------------------------------
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
-                    ?? new[] { "http://localhost:3000", "http://localhost:5173" }; 
+                    ?? new[] { "http://localhost:3000", "http://localhost:5173", "https://th1eros.github.io" }; 
 
 builder.Services.AddCors(options =>
 {
