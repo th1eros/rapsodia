@@ -1,4 +1,4 @@
-namespace API_SVsharp;
+namespace Rapsodia;
 
 public class WeatherForecast
 {

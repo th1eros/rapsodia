@@ -1,7 +1,7 @@
-using API_SVsharp.DTO.Asset;
-using API_SVsharp.DTO.Response;
+using Rapsodia.DTO.Asset;
+using Rapsodia.DTO.Response;
 
-namespace API_SVsharp.Application.Interfaces
+namespace Rapsodia.Application.Interfaces
 {
     public interface IAssetService
     {

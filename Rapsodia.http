@@ -1,0 +1,6 @@
+@Rapsodia_HostAddress = http://localhost:5073
+
+GET {{Rapsodia_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

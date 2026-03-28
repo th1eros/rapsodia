@@ -1,6 +1,6 @@
-using API_SVsharp.Models.Entity;
+using Rapsodia.Models.Entity;
 
-namespace API_SVsharp.Application.Interfaces
+namespace Rapsodia.Application.Interfaces
 {
     public interface ITokenService
     {

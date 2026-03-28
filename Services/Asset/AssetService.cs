@@ -2,16 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using API_SVsharp.Data;
-using API_SVsharp.DTO.Asset;
-using API_SVsharp.DTO.Vuln;
-using API_SVsharp.DTO.Response;
-using API_SVsharp.Models.Entity;
-using API_SVsharp.Application.Interfaces;
+using Rapsodia.Data;
+using Rapsodia.DTO.Asset;
+using Rapsodia.DTO.Vuln;
+using Rapsodia.DTO.Response;
+using Rapsodia.Models.Entity;
+using Rapsodia.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace API_SVsharp.Services.Assets
+namespace Rapsodia.Services.Assets
 {
     public class AssetService : IAssetService
     {
@@ -102,7 +102,7 @@ namespace API_SVsharp.Services.Assets
                 if (asset == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset não encontrado.";
+                    response.Mensagem = "Asset nÃ£o encontrado.";
                     return response;
                 }
                 response.Dados = ToDTO(asset);
@@ -122,14 +122,14 @@ namespace API_SVsharp.Services.Assets
             var response = new ResponseModel<AssetResponseDTO>();
             try
             {
-                // 1. Sanitização
+                // 1. SanitizaÃ§Ã£o
                 var nomeSanitizado = dto.Nome?.Trim();
 
-                // 2. Validação de Regra de Negócio
+                // 2. ValidaÃ§Ã£o de Regra de NegÃ³cio
                 if (string.IsNullOrWhiteSpace(nomeSanitizado))
                 {
                     response.Status = false;
-                    response.Mensagem = "O nome do asset é obrigatório.";
+                    response.Mensagem = "O nome do asset Ã© obrigatÃ³rio.";
                     return response;
                 }
 
@@ -137,11 +137,11 @@ namespace API_SVsharp.Services.Assets
                 if (existe)
                 {
                     response.Status = false;
-                    response.Mensagem = $"Já existe um asset cadastrado com o nome '{nomeSanitizado}'.";
+                    response.Mensagem = $"JÃ¡ existe um asset cadastrado com o nome '{nomeSanitizado}'.";
                     return response;
                 }
 
-                // 3. Persistência
+                // 3. PersistÃªncia
                 var asset = new Asset
                 {
                     Nome = nomeSanitizado,
@@ -163,7 +163,7 @@ namespace API_SVsharp.Services.Assets
             {
                 _logger.LogError(ex, "Erro ao criar asset.");
                 response.Status = false;
-                response.Mensagem = "Falha técnica ao criar o asset.";
+                response.Mensagem = "Falha tÃ©cnica ao criar o asset.";
             }
             return response;
         }
@@ -177,7 +177,7 @@ namespace API_SVsharp.Services.Assets
                 if (asset == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset não encontrado.";
+                    response.Mensagem = "Asset nÃ£o encontrado.";
                     return response;
                 }
 
@@ -187,7 +187,7 @@ namespace API_SVsharp.Services.Assets
                     if (string.IsNullOrWhiteSpace(nomeNovo))
                     {
                         response.Status = false;
-                        response.Mensagem = "O nome não pode ser vazio.";
+                        response.Mensagem = "O nome nÃ£o pode ser vazio.";
                         return response;
                     }
 
@@ -195,7 +195,7 @@ namespace API_SVsharp.Services.Assets
                     if (duplicado)
                     {
                         response.Status = false;
-                        response.Mensagem = "Este nome já está em uso por outro asset.";
+                        response.Mensagem = "Este nome jÃ¡ estÃ¡ em uso por outro asset.";
                         return response;
                     }
                     asset.Nome = nomeNovo;
@@ -217,7 +217,7 @@ namespace API_SVsharp.Services.Assets
             {
                 _logger.LogError(ex, "Erro ao editar asset {Id}.", idAsset);
                 response.Status = false;
-                response.Mensagem = "Erro ao salvar alterações do asset.";
+                response.Mensagem = "Erro ao salvar alteraÃ§Ãµes do asset.";
             }
             return response;
         }
@@ -231,7 +231,7 @@ namespace API_SVsharp.Services.Assets
                 if (asset == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset não encontrado ou já arquivado.";
+                    response.Mensagem = "Asset nÃ£o encontrado ou jÃ¡ arquivado.";
                     return response;
                 }
 
@@ -264,7 +264,7 @@ namespace API_SVsharp.Services.Assets
                 if (asset == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset não encontrado no arquivo.";
+                    response.Mensagem = "Asset nÃ£o encontrado no arquivo.";
                     return response;
                 }
 
@@ -281,7 +281,7 @@ namespace API_SVsharp.Services.Assets
             {
                 _logger.LogError(ex, "Erro ao restaurar asset {Id}.", idAsset);
                 response.Status = false;
-                response.Mensagem = "Erro técnico ao restaurar asset.";
+                response.Mensagem = "Erro tÃ©cnico ao restaurar asset.";
             }
             return response;
         }
@@ -297,7 +297,7 @@ namespace API_SVsharp.Services.Assets
                 if (asset == null || vuln == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Asset ou Vulnerabilidade não encontrados.";
+                    response.Mensagem = "Asset ou Vulnerabilidade nÃ£o encontrados.";
                     return response;
                 }
 
@@ -318,13 +318,13 @@ namespace API_SVsharp.Services.Assets
 
                 response.Dados = ToDTO(asset);
                 response.Status = true;
-                response.Mensagem = existe ? "Vínculo já existe." : "Vulnerabilidade vinculada com sucesso.";
+                response.Mensagem = existe ? "VÃ­nculo jÃ¡ existe." : "Vulnerabilidade vinculada com sucesso.";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Erro ao vincular vuln {VulnId} ao asset {AssetId}.", idVuln, idAsset);
                 response.Status = false;
-                response.Mensagem = "Erro ao processar vínculo.";
+                response.Mensagem = "Erro ao processar vÃ­nculo.";
             }
             return response;
         }
@@ -340,7 +340,7 @@ namespace API_SVsharp.Services.Assets
                 if (relacao == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Vínculo não encontrado.";
+                    response.Mensagem = "VÃ­nculo nÃ£o encontrado.";
                     response.Dados = false;
                     return response;
                 }
@@ -348,17 +348,17 @@ namespace API_SVsharp.Services.Assets
                 _context.AssetVulns.Remove(relacao);
                 await _context.SaveChangesAsync();
                 
-                _logger.LogInformation("Vínculo removido entre Asset {AssetId} e Vuln {VulnId}.", assetId, vulnId);
+                _logger.LogInformation("VÃ­nculo removido entre Asset {AssetId} e Vuln {VulnId}.", assetId, vulnId);
 
                 response.Status = true;
-                response.Mensagem = "Vínculo removido.";
+                response.Mensagem = "VÃ­nculo removido.";
                 response.Dados = true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao remover vínculo entre asset {AssetId} e vuln {VulnId}.", assetId, vulnId);
+                _logger.LogError(ex, "Erro ao remover vÃ­nculo entre asset {AssetId} e vuln {VulnId}.", assetId, vulnId);
                 response.Status = false;
-                response.Mensagem = "Erro ao desfazer vínculo.";
+                response.Mensagem = "Erro ao desfazer vÃ­nculo.";
             }
             return response;
         }

@@ -1,14 +1,14 @@
-using API_SVsharp.DTO.Asset;
-using API_SVsharp.Application.Interfaces;
-using API_SVsharp.DTO.Response;
+using Rapsodia.DTO.Asset;
+using Rapsodia.Application.Interfaces;
+using Rapsodia.DTO.Response;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 
-namespace API_SVsharp.Controllers
+namespace Rapsodia.Controllers
 {
     [ApiController]
     [Route("api/assets")]
-    [Authorize] // JWT obrigatório em todas as rotas deste controller.
+    [Authorize] // JWT obrigatÃ³rio em todas as rotas deste controller.
     public class AssetController : ControllerBase
     {
         private readonly IAssetService _assetService;

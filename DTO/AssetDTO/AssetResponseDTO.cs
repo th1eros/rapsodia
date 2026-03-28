@@ -1,8 +1,8 @@
-using API_SVsharp.Models.Entity;
-using API_SVsharp.DTO.Vuln;
+using Rapsodia.Models.Entity;
+using Rapsodia.DTO.Vuln;
 using System.Collections.Generic;
 
-namespace API_SVsharp.DTO.Asset
+namespace Rapsodia.DTO.Asset
 {
     // O JsonStringEnumConverter (registrado no Program.cs) serializa os enums como string.
     // Frontend TypeScript recebe: { "tipo": "WebApplication", "ambiente": "PROD" }

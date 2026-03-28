@@ -1,14 +1,14 @@
-using API_SVsharp.DTO.Vuln;
-using API_SVsharp.Application.Interfaces;
+using Rapsodia.DTO.Vuln;
+using Rapsodia.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using API_SVsharp.DTO.Response;
+using Rapsodia.DTO.Response;
 using Microsoft.AspNetCore.Authorization;
 
-namespace API_SVsharp.Controllers
+namespace Rapsodia.Controllers
 {
     [Route("api/vulns")]
     [ApiController]
-    [Authorize] // JWT obrigatório em todas as rotas deste controller.
+    [Authorize] // JWT obrigatÃ³rio em todas as rotas deste controller.
     public class VulnController : ControllerBase
     {
         private readonly IVulnService _vulnService;

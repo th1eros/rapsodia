@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace API_SVsharp.Models.Entity
+namespace Rapsodia.Models.Entity
 {
     public class Telemetry : BaseEntity
     {

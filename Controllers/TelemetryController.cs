@@ -1,16 +1,16 @@
-using API_SVsharp.DTO.Response;
-using API_SVsharp.DTO.TelemetryDTO;
-using API_SVsharp.Services.Telemetries;
+using Rapsodia.DTO.Response;
+using Rapsodia.DTO.TelemetryDTO;
+using Rapsodia.Services.Telemetries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace API_SVsharp.Controllers
+namespace Rapsodia.Controllers
 {
     [Route("api/telemetry")]
     [ApiController]
-    [Authorize] // JWT obrigatório para garantir integridade (CISO Requirement)
+    [Authorize] // JWT obrigatÃ³rio para garantir integridade (CISO Requirement)
     public class TelemetryController : ControllerBase
     {
         private readonly ITelemetryService _telemetryService;
@@ -24,7 +24,7 @@ namespace API_SVsharp.Controllers
 
         // GET api/telemetry
         [HttpGet]
-        [AllowAnonymous] // Dashboard público para monitoramento de anomalias
+        [AllowAnonymous] // Dashboard pÃºblico para monitoramento de anomalias
         public async Task<ActionResult<ResponseModel<List<TelemetryResponseDTO>>>> List([FromQuery] int count = 50)
         {
             var response = await _telemetryService.GetLatestTelemetries(count);

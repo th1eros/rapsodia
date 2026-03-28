@@ -3,9 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using API_SVsharp.Models.Entity;
+using Rapsodia.Models.Entity;
 
-namespace API_SVsharp.Data
+namespace Rapsodia.Data
 {
     public class AppDbContext : DbContext
     {
@@ -21,7 +21,7 @@ namespace API_SVsharp.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Imutabilidade: Impede alteração manual do timestamp de criação
+            // Imutabilidade: Impede alteraÃ§Ã£o manual do timestamp de criaÃ§Ã£o
             modelBuilder.Entity<Asset>().Property(a => a.CreatedAt)
                 .ValueGeneratedOnAdd().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
             modelBuilder.Entity<Vuln>().Property(v => v.CreatedAt)
@@ -33,7 +33,7 @@ namespace API_SVsharp.Data
 
             modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
 
-            // Configuração N:N
+            // ConfiguraÃ§Ã£o N:N
             modelBuilder.Entity<AssetVuln>().HasKey(av => new { av.AssetId, av.VulnId });
             modelBuilder.Entity<AssetVuln>().ToTable("assets_vulnerabilidades");
             modelBuilder.Entity<AssetVuln>().Property(av => av.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
@@ -46,13 +46,13 @@ namespace API_SVsharp.Data
                 .HasOne(av => av.Vuln).WithMany(v => v.AssetVulns)
                 .HasForeignKey(av => av.VulnId).OnDelete(DeleteBehavior.Restrict);
 
-            // Filtros Globais: Implementação de Soft Delete
+            // Filtros Globais: ImplementaÃ§Ã£o de Soft Delete
             modelBuilder.Entity<Asset>().HasQueryFilter(a => !a.DeletedAt.HasValue);
             modelBuilder.Entity<Vuln>().HasQueryFilter(v => !v.DeletedAt.HasValue);
             modelBuilder.Entity<User>().HasQueryFilter(u => !u.DeletedAt.HasValue);
             modelBuilder.Entity<Telemetry>().HasQueryFilter(t => !t.DeletedAt.HasValue);
 
-            // Conversão de Enums para String (Melhor integração com Frontend/TS)
+            // ConversÃ£o de Enums para String (Melhor integraÃ§Ã£o com Frontend/TS)
             modelBuilder.Entity<Vuln>().Property(v => v.Ambiente).HasConversion<string>();
             modelBuilder.Entity<Vuln>().Property(v => v.Nivel).HasConversion<string>();
             modelBuilder.Entity<Vuln>().Property(v => v.Status).HasConversion<string>();
@@ -91,7 +91,7 @@ namespace API_SVsharp.Data
                 }
                 else if (entry.State == EntityState.Deleted)
                 {
-                    // Interceptação: Converte Hard Delete em Soft Delete
+                    // InterceptaÃ§Ã£o: Converte Hard Delete em Soft Delete
                     entry.State = EntityState.Modified;
                     entry.Entity.DeletedAt = now;
                     entry.Entity.UpdatedAt = now;

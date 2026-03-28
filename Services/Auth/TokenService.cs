@@ -2,12 +2,12 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using API_SVsharp.Models.Entity;
+using Rapsodia.Models.Entity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Configuration;
-using API_SVsharp.Application.Interfaces;
+using Rapsodia.Application.Interfaces;
 
-namespace API_SVsharp.Services.Auth
+namespace Rapsodia.Services.Auth
 {
     public class TokenService : ITokenService
     {
@@ -21,7 +21,7 @@ namespace API_SVsharp.Services.Auth
         // [CTO] O nome DEVE ser exatamente GenerateToken para bater com a interface
         public string GenerateToken(User user)
         {
-            var keyStr = _config["Jwt:Key"] ?? "Chave_Mestra_Super_Secreta_SVsharp_2026";
+            var keyStr = _config["Jwt:Key"] ?? "Chave_Mestra_Super_Secreta_aBitat_2026";
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -33,8 +33,8 @@ namespace API_SVsharp.Services.Auth
             };
 
             var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"] ?? "SVsharpAPI",
-                audience: _config["Jwt:Audience"] ?? "SVsharpFrontend",
+                issuer: _config["Jwt:Issuer"] ?? "aBitatAPI",
+                audience: _config["Jwt:Audience"] ?? "aBitatFrontend",
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(8),
                 signingCredentials: creds

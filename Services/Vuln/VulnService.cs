@@ -1,12 +1,12 @@
-using API_SVsharp.Data;
-using API_SVsharp.DTO.Vuln;
-using API_SVsharp.DTO.Response;
-using API_SVsharp.Models.Entity;
-using API_SVsharp.Application.Interfaces;
+using Rapsodia.Data;
+using Rapsodia.DTO.Vuln;
+using Rapsodia.DTO.Response;
+using Rapsodia.Models.Entity;
+using Rapsodia.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace API_SVsharp.Services.Vulns
+namespace Rapsodia.Services.Vulns
 {
     public class VulnService : IVulnService
     {
@@ -74,7 +74,7 @@ namespace API_SVsharp.Services.Vulns
                 if (vuln == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Vulnerabilidade não encontrada.";
+                    response.Mensagem = "Vulnerabilidade nÃ£o encontrada.";
                     return response;
                 }
                 response.Dados = ToDTO(vuln);
@@ -84,7 +84,7 @@ namespace API_SVsharp.Services.Vulns
             {
                 _logger.LogError(ex, "Erro ao buscar vulnerabilidade {Id}.", idVuln);
                 response.Status = false;
-                response.Mensagem = "Erro técnico ao localizar vulnerabilidade.";
+                response.Mensagem = "Erro tÃ©cnico ao localizar vulnerabilidade.";
             }
             return response;
         }
@@ -94,14 +94,14 @@ namespace API_SVsharp.Services.Vulns
             var response = new ResponseModel<VulnResponseDTO>();
             try
             {
-                // 1. Sanitização
+                // 1. SanitizaÃ§Ã£o
                 var tituloSanitizado = dto.Titulo?.Trim();
 
-                // 2. Validação
+                // 2. ValidaÃ§Ã£o
                 if (string.IsNullOrWhiteSpace(tituloSanitizado))
                 {
                     response.Status = false;
-                    response.Mensagem = "O título da vulnerabilidade é obrigatório.";
+                    response.Mensagem = "O tÃ­tulo da vulnerabilidade Ã© obrigatÃ³rio.";
                     return response;
                 }
 
@@ -109,11 +109,11 @@ namespace API_SVsharp.Services.Vulns
                 if (existe)
                 {
                     response.Status = false;
-                    response.Mensagem = $"Já existe uma vulnerabilidade registrada com o título '{tituloSanitizado}'.";
+                    response.Mensagem = $"JÃ¡ existe uma vulnerabilidade registrada com o tÃ­tulo '{tituloSanitizado}'.";
                     return response;
                 }
 
-                // 3. Persistência
+                // 3. PersistÃªncia
                 var vuln = new Vuln
                 {
                     Titulo = tituloSanitizado,
@@ -150,7 +150,7 @@ namespace API_SVsharp.Services.Vulns
                 if (vuln == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Vulnerabilidade não encontrada.";
+                    response.Mensagem = "Vulnerabilidade nÃ£o encontrada.";
                     return response;
                 }
 
@@ -160,7 +160,7 @@ namespace API_SVsharp.Services.Vulns
                     if (string.IsNullOrWhiteSpace(tituloNovo))
                     {
                         response.Status = false;
-                        response.Mensagem = "O título não pode ser vazio.";
+                        response.Mensagem = "O tÃ­tulo nÃ£o pode ser vazio.";
                         return response;
                     }
 
@@ -168,7 +168,7 @@ namespace API_SVsharp.Services.Vulns
                     if (duplicado)
                     {
                         response.Status = false;
-                        response.Mensagem = "Este título já está em uso por outra vulnerabilidade.";
+                        response.Mensagem = "Este tÃ­tulo jÃ¡ estÃ¡ em uso por outra vulnerabilidade.";
                         return response;
                     }
                     vuln.Titulo = tituloNovo;
@@ -190,7 +190,7 @@ namespace API_SVsharp.Services.Vulns
             {
                 _logger.LogError(ex, "Erro ao editar vulnerabilidade {Id}.", idVuln);
                 response.Status = false;
-                response.Mensagem = "Erro ao salvar alterações da vulnerabilidade.";
+                response.Mensagem = "Erro ao salvar alteraÃ§Ãµes da vulnerabilidade.";
             }
             return response;
         }
@@ -204,7 +204,7 @@ namespace API_SVsharp.Services.Vulns
                 if (vuln == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Vulnerabilidade não encontrada ou já arquivada.";
+                    response.Mensagem = "Vulnerabilidade nÃ£o encontrada ou jÃ¡ arquivada.";
                     return response;
                 }
 
@@ -221,7 +221,7 @@ namespace API_SVsharp.Services.Vulns
             {
                 _logger.LogError(ex, "Erro ao arquivar vulnerabilidade {Id}.", idVuln);
                 response.Status = false;
-                response.Mensagem = "Falha técnica ao arquivar vulnerabilidade.";
+                response.Mensagem = "Falha tÃ©cnica ao arquivar vulnerabilidade.";
             }
             return response;
         }
@@ -237,7 +237,7 @@ namespace API_SVsharp.Services.Vulns
                 if (vuln == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Vulnerabilidade não encontrada no arquivo.";
+                    response.Mensagem = "Vulnerabilidade nÃ£o encontrada no arquivo.";
                     return response;
                 }
 
@@ -254,7 +254,7 @@ namespace API_SVsharp.Services.Vulns
             {
                 _logger.LogError(ex, "Erro ao restaurar vulnerabilidade {Id}.", idVuln);
                 response.Status = false;
-                response.Mensagem = "Erro ao processar restauração.";
+                response.Mensagem = "Erro ao processar restauraÃ§Ã£o.";
             }
             return response;
         }

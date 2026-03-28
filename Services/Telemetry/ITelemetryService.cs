@@ -1,9 +1,9 @@
-using API_SVsharp.DTO.Response;
-using API_SVsharp.DTO.TelemetryDTO;
+using Rapsodia.DTO.Response;
+using Rapsodia.DTO.TelemetryDTO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace API_SVsharp.Services.Telemetries
+namespace Rapsodia.Services.Telemetries
 {
     public interface ITelemetryService
     {

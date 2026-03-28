@@ -3,12 +3,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copiar arquivo de projeto e restaurar
-COPY ["API_SVsharp.csproj", "./"]
-RUN dotnet restore "./API_SVsharp.csproj"
+COPY ["Rapsodia.csproj", "./"]
+RUN dotnet restore "./Rapsodia.csproj"
 
 # Copiar código fonte e publicar
 COPY . .
-RUN dotnet publish "API_SVsharp.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "Rapsodia.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
@@ -26,4 +26,4 @@ ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "API_SVsharp.dll"]
+ENTRYPOINT ["dotnet", "Rapsodia.dll"]

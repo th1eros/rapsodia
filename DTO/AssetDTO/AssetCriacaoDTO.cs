@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
-using API_SVsharp.Models.Entity;
+using Rapsodia.Models.Entity;
 
-namespace API_SVsharp.DTO.Asset
+namespace Rapsodia.DTO.Asset
 {
     public class AssetCriacaoDTO
     {

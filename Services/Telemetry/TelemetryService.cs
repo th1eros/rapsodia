@@ -1,14 +1,14 @@
-using API_SVsharp.Data;
-using API_SVsharp.DTO.Response;
-using API_SVsharp.DTO.TelemetryDTO;
-using API_SVsharp.Models.Entity;
+using Rapsodia.Data;
+using Rapsodia.DTO.Response;
+using Rapsodia.DTO.TelemetryDTO;
+using Rapsodia.Models.Entity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace API_SVsharp.Services.Telemetries
+namespace Rapsodia.Services.Telemetries
 {
     public class TelemetryService : ITelemetryService
     {
@@ -93,7 +93,7 @@ namespace API_SVsharp.Services.Telemetries
                 if (telemetry == null)
                 {
                     response.Status = false;
-                    response.Mensagem = "Telemetria não encontrada.";
+                    response.Mensagem = "Telemetria nÃ£o encontrada.";
                     return response;
                 }
 

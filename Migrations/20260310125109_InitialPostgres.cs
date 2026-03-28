@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace API_SVsharp.Migrations
+namespace Rapsodia.Migrations
 {
     /// <inheritdoc />
     public partial class InitialPostgres : Migration

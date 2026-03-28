@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using API_SVsharp.Data;
-using API_SVsharp.Models.Entity;
-using API_SVsharp.Application.Interfaces;
-using API_SVsharp.Application.DTOs;
+using Rapsodia.Data;
+using Rapsodia.Models.Entity;
+using Rapsodia.Application.Interfaces;
+using Rapsodia.Application.DTOs;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace API_SVsharp.Controllers
+namespace Rapsodia.Controllers
 {
     [ApiController]
     [Route("api/auth")]
@@ -28,19 +28,19 @@ namespace API_SVsharp.Controllers
         [HttpPost("register")]
         public async Task<ActionResult> Register([FromBody] LoginRequest request)
         {
-            _logger.LogInformation("Tentativa de registro para o usuário: {Username}", request.Username);
+            _logger.LogInformation("Tentativa de registro para o usuÃ¡rio: {Username}", request.Username);
 
-            // Validação de Entropia (Criterio CISO/CTO: Lógica e Probabilidade)
+            // ValidaÃ§Ã£o de inTropic (Criterio CISO/CTO: LÃ³gica e Probabilidade)
             if (!IsPasswordStrong(request.Password))
             {
-                _logger.LogWarning("Senha fraca fornecida para o usuário: {Username}", request.Username);
-                return BadRequest(new { message = "A senha não atende aos critérios de entropia: deve conter letras maiúsculas, minúsculas, números e caracteres especiais." });
+                _logger.LogWarning("Senha fraca fornecida para o usuÃ¡rio: {Username}", request.Username);
+                return BadRequest(new { message = "A senha nÃ£o atende aos critÃ©rios de inTropic: deve conter letras maiÃºsculas, minÃºsculas, nÃºmeros e caracteres especiais." });
             }
 
             if (await _context.Users.AnyAsync(u => u.Username == request.Username))
-                return Conflict(new { message = "Usuário já existe." });
+                return Conflict(new { message = "UsuÃ¡rio jÃ¡ existe." });
 
-            // Se for o primeiro usuário, define como Admin
+            // Se for o primeiro usuÃ¡rio, define como Admin
             var isFirstUser = !await _context.Users.AnyAsync();
 
             var user = new User
@@ -53,8 +53,8 @@ namespace API_SVsharp.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Usuário {Username} criado com sucesso como {Role}.", request.Username, user.Role);
-            return Ok(new { message = $"Usuário criado com sucesso como {user.Role}." });
+            _logger.LogInformation("UsuÃ¡rio {Username} criado com sucesso como {Role}.", request.Username, user.Role);
+            return Ok(new { message = $"UsuÃ¡rio criado com sucesso como {user.Role}." });
         }
 
         // POST api/auth/login
@@ -68,11 +68,11 @@ namespace API_SVsharp.Controllers
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
-                _logger.LogWarning("Falha de autenticação para o usuário: {Username}", request.Username);
-                return Unauthorized(new { message = "Usuário ou senha inválidos." });
+                _logger.LogWarning("Falha de autenticaÃ§Ã£o para o usuÃ¡rio: {Username}", request.Username);
+                return Unauthorized(new { message = "UsuÃ¡rio ou senha invÃ¡lidos." });
             }
 
-            _logger.LogInformation("Usuário {Username} autenticado com sucesso.", request.Username);
+            _logger.LogInformation("UsuÃ¡rio {Username} autenticado com sucesso.", request.Username);
             var token = _tokenService.GenerateToken(user);
             return Ok(new { token });
         }

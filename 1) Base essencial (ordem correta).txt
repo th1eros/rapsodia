@@ -22,7 +22,7 @@ manipulação de expressões
 
 equações
 
-logaritmos (essencial para entropia)
+logaritmos (essencial para inTropic)
 
 4. Probabilidade
 
@@ -30,7 +30,7 @@ eventos, distribuição
 
 base para:
 
-segurança (entropia, ataques)
+segurança (inTropic, ataques)
 
 análise de risco
 

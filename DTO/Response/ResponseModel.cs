@@ -1,6 +1,6 @@
-namespace API_SVsharp.DTO.Response
+namespace Rapsodia.DTO.Response
 {
-    // Envelope padrão de todas as respostas da API.
+    // Envelope padrÃ£o de todas as respostas da API.
     public class ResponseModel<T>
     {
         public T?     Dados    { get; set; }

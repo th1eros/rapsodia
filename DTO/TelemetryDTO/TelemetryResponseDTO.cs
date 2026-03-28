@@ -1,6 +1,6 @@
 using System;
 
-namespace API_SVsharp.DTO.TelemetryDTO
+namespace Rapsodia.DTO.TelemetryDTO
 {
     public class TelemetryResponseDTO
     {

@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace API_SVsharp.DTO.TelemetryDTO
+namespace Rapsodia.DTO.TelemetryDTO
 {
     public class TelemetryCreateDTO
     {

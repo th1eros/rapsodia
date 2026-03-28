@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "API_SVsharp/1.0.0": {
+      "Rapsodia/1.0.0": {
         "dependencies": {
           "BCrypt.Net-Next": "4.1.0",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "8.0.0",
@@ -16,7 +16,7 @@
           "Swashbuckle.AspNetCore.Filters": "8.0.0"
         },
         "runtime": {
-          "API_SVsharp.dll": {}
+          "Rapsodia.dll": {}
         }
       },
       "BCrypt.Net-Next/4.1.0": {
@@ -256,7 +256,7 @@
     }
   },
   "libraries": {
-    "API_SVsharp/1.0.0": {
+    "Rapsodia/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

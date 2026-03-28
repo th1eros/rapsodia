@@ -1,7 +1,7 @@
-using API_SVsharp.DTO.Vuln;
-using API_SVsharp.DTO.Response;
+using Rapsodia.DTO.Vuln;
+using Rapsodia.DTO.Response;
 
-namespace API_SVsharp.Application.Interfaces
+namespace Rapsodia.Application.Interfaces
 {
     public interface IVulnService
     {

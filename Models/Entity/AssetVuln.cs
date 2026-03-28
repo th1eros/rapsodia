@@ -1,8 +1,8 @@
-namespace API_SVsharp.Models.Entity
+namespace Rapsodia.Models.Entity
 {
-    // Tabela de junção N:N entre Asset e Vuln.
-    // Não herda BaseEntity: vínculos são criados ou removidos (hard delete), nunca auditados individualmente.
-    // ⚠️ Rode uma migration após esta alteração:
+    // Tabela de junÃ§Ã£o N:N entre Asset e Vuln.
+    // NÃ£o herda BaseEntity: vÃ­nculos sÃ£o criados ou removidos (hard delete), nunca auditados individualmente.
+    // âš ï¸ Rode uma migration apÃ³s esta alteraÃ§Ã£o:
     public class AssetVuln
     {
         public int   AssetId   { get; set; }
@@ -10,7 +10,7 @@ namespace API_SVsharp.Models.Entity
         public Asset Asset     { get; set; } = null!;
         public Vuln  Vuln      { get; set; } = null!;
 
-        // Mantém rastreabilidade de quando o vínculo foi criado.
+        // MantÃ©m rastreabilidade de quando o vÃ­nculo foi criado.
         public DateTime CreatedAt { get; set; }
     }
 }

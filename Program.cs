@@ -1,9 +1,9 @@
-using API_SVsharp.Data;
-using API_SVsharp.Application.Interfaces;
-using API_SVsharp.Services.Assets;
-using API_SVsharp.Services.Vulns;
-using API_SVsharp.Services.Auth;
-using API_SVsharp.Services.Telemetries;
+using Rapsodia.Data;
+using Rapsodia.Application.Interfaces;
+using Rapsodia.Services.Assets;
+using Rapsodia.Services.Vulns;
+using Rapsodia.Services.Auth;
+using Rapsodia.Services.Telemetries;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,17 +14,17 @@ using System.Text.Json;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics;
-using API_SVsharp.DTO.Response;
+using Rapsodia.DTO.Response;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 0. LOGGING E CONFIGURAÇÃO INICIAL
+// 0. LOGGING E CONFIGURAÃ‡ÃƒO INICIAL
 // ---------------------------------------------------------
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-// 1. CONFIGURAÇÃO DE CORS (Whitelist)
+// 1. CONFIGURAÃ‡ÃƒO DE CORS (Whitelist)
 // ---------------------------------------------------------
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
                     ?? new[] { "http://localhost:3000", "http://localhost:5173", "https://th1eros.github.io" }; 
@@ -40,7 +40,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 2. CONFIGURAÇÃO DE BANCO DE DADOS (RENDER / LOCAL)
+// 2. CONFIGURAÃ‡ÃƒO DE BANCO DE DADOS (RENDER / LOCAL)
 // ---------------------------------------------------------
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection");
@@ -57,7 +57,7 @@ if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("post
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 3. INJEÇÃO DE DEPENDÊNCIA
+// 3. INJEÃ‡ÃƒO DE DEPENDÃŠNCIA
 // ---------------------------------------------------------
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IVulnService, VulnService>();
@@ -93,7 +93,7 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
-// 5. AUTENTICAÇÃO JWT
+// 5. AUTENTICAÃ‡ÃƒO JWT
 // ---------------------------------------------------------
 var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? builder.Configuration["Jwt:Key"];
 
@@ -104,16 +104,16 @@ var key = !string.IsNullOrEmpty(jwtKey)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        if (key == null) throw new InvalidOperationException("Chave JWT não configurada.");
+        if (key == null) throw new InvalidOperationException("Chave JWT nÃ£o configurada.");
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = key,
             ValidateIssuer = true,
-            ValidIssuer = Environment.GetEnvironmentVariable("Jwt__Issuer") ?? builder.Configuration["Jwt:Issuer"] ?? "API_SVsharp",
+            ValidIssuer = Environment.GetEnvironmentVariable("Jwt__Issuer") ?? builder.Configuration["Jwt:Issuer"] ?? "Rapsodia",
             ValidateAudience = true,
-            ValidAudience = Environment.GetEnvironmentVariable("Jwt__Audience") ?? builder.Configuration["Jwt:Audience"] ?? "API_SVsharp_Clients",
+            ValidAudience = Environment.GetEnvironmentVariable("Jwt__Audience") ?? builder.Configuration["Jwt:Audience"] ?? "Rapsodia_Clients",
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
@@ -124,7 +124,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "SVSharp API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "aBitat API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header. Exemplo: \"Bearer {token}\"",
@@ -148,7 +148,7 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
-logger.LogInformation("🚀 SVSharp API — Iniciando setup do sistema...");
+logger.LogInformation("ðŸš€ aBitat API â€” Iniciando setup do sistema...");
 
 // 7. MIDDLEWARE - GLOBAL ERROR HANDLING
 // ---------------------------------------------------------
@@ -160,7 +160,7 @@ app.UseExceptionHandler(errorApp =>
         var exception = exceptionHandlerPathFeature?.Error;
 
         var localLogger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        localLogger.LogError(exception, "❌ EXCEÇÃO NÃO TRATADA: {Message}", exception?.Message);
+        localLogger.LogError(exception, "âŒ EXCEÃ‡ÃƒO NÃƒO TRATADA: {Message}", exception?.Message);
 
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/json";
@@ -191,7 +191,7 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "no-referrer");
-    // CSP ajustada: permite inline scripts/styles necessários para Swagger e SPAs modernos
+    // CSP ajustada: permite inline scripts/styles necessÃ¡rios para Swagger e SPAs modernos
     context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
     await next();
 });
@@ -206,7 +206,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SVSharp API v1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "aBitat API v1");
         c.RoutePrefix = "swagger";
     });
 }
@@ -214,7 +214,7 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/health", () => Results.Ok(new { status = "API Online", timestamp = DateTime.UtcNow }));
 app.MapControllers();
 
-// 9. SINCRONIZAÇÃO AUTOMÁTICA DO BANCO
+// 9. SINCRONIZAÃ‡ÃƒO AUTOMÃTICA DO BANCO
 // ---------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
@@ -223,11 +223,11 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
-        logger.LogInformation("✅ Banco de dados sincronizado e tabelas prontas!");
+        logger.LogInformation("âœ… Banco de dados sincronizado e tabelas prontas!");
     }
     catch (Exception ex)
     {
-        logger.LogCritical(ex, "❌ ERRO AO PREPARAR O BANCO: {Message}", ex.Message);
+        logger.LogCritical(ex, "âŒ ERRO AO PREPARAR O BANCO: {Message}", ex.Message);
     }
 }
 

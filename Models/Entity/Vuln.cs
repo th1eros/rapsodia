@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
-namespace API_SVsharp.Models.Entity
+namespace Rapsodia.Models.Entity
 {
     public enum NivelVuln   { Baixa, Media, Alta, Critica }
     public enum AmbienteVuln { DEV, HML, PROD }
