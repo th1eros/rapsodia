@@ -53,9 +53,9 @@ if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("post
 {
     var databaseUri = new Uri(connectionString);
     var userInfo = databaseUri.UserInfo.Split(':');
-    var port = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
+    var dbPort = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
 
-    connectionString = $"Host={databaseUri.Host};Port={port};Database={databaseUri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;Trust Server Certificate=true;";
+    connectionString = $"Host={databaseUri.Host};Port={dbPort};Database={databaseUri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;Trust Server Certificate=true;";
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>

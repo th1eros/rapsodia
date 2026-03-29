@@ -22,8 +22,6 @@ RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Configurações de porta para o Render
-# Deixamos o ASPNETCORE_URLS usar a porta dinâmica fornecida pelo Render
-ENV ASPNETCORE_URLS=http://+:10000
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 10000
 
