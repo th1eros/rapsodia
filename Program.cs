@@ -36,7 +36,8 @@ var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<stri
                     ?? new[] {
                         "http://localhost:3000",
                         "http://localhost:5173",
-                        "https://th1eros.github.io"
+                        "https://th1eros.github.io",
+                        "https://rapsodia-roij.onrender.com"
                     };
 
 builder.Services.AddCors(options =>
@@ -216,14 +217,17 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || true) // Forçamos a exibição para teste inicial no Render
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "aBitat API v1");
-        c.RoutePrefix = "swagger";
+        c.RoutePrefix = "swagger"; // Acessível em /swagger
     });
 }
+
+// Rota raiz para evitar 404 e confirmar que a API está ativa
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.MapGet("/health", () => Results.Ok(new { status = "API Online", timestamp = DateTime.UtcNow }));
 app.MapControllers();
