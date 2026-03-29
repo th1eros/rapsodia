@@ -1,20 +1,6 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Rapsodia.Data;
-using Rapsodia.Application.Interfaces;
-using Rapsodia.Services.Assets;
-using Rapsodia.Services.Vulns;
-using Rapsodia.Services.Auth;
-using Rapsodia.Services.Telemetries;
-using Microsoft.EntityFrameworkCore;
-using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using System.Text;
-using System.Text.Json;
-using Microsoft.AspNetCore.RateLimiting;
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Diagnostics;
-using Rapsodia.DTO.Response;
+// ... (rest of imports)
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,28 +8,33 @@ var builder = WebApplication.CreateBuilder(args);
 var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
 builder.WebHost.UseUrls($"http://*:{port}");
 
-// 0. LOGGING E CONFIGURAÇÃO INICIAL
-// ---------------------------------------------------------
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
-builder.Logging.AddDebug();
+// Adicionar suporte a Forwarded Headers (Necessário para Render/Proxies)
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
-// 1. CONFIGURAÃ‡ÃƒO DE CORS (Whitelist)
+// 1. CONFIGURAÇÃO DE CORS (Whitelist)
 // ---------------------------------------------------------
-var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
-                    ?? new[] { "http://localhost:3000", "http://localhost:5173", "https://th1eros.github.io" }; 
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
+                    ?? new[] {
+                        "http://localhost:3000",
+                        "http://localhost:5173",
+                        "https://th1eros.github.io"
+                    };
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DefaultPolicy", policy =>
     {
         policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
               .AllowAnyHeader()
+              .AllowAnyMethod()
               .AllowCredentials();
     });
 });
-
 // 2. CONFIGURAÃ‡ÃƒO DE BANCO DE DADOS (RENDER / LOCAL)
 // ---------------------------------------------------------
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
