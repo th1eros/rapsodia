@@ -1,6 +1,21 @@
 using Microsoft.AspNetCore.HttpOverrides;
 using Rapsodia.Data;
-// ... (rest of imports)
+using Rapsodia.Application.Interfaces;
+using Rapsodia.Services.Assets;
+using Rapsodia.Services.Vulns;
+using Rapsodia.Services.Auth;
+using Rapsodia.Services.Telemetries;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics;
+using Rapsodia.DTO.Response;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +30,6 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
 });
-
 // 1. CONFIGURAÇÃO DE CORS (Whitelist)
 // ---------------------------------------------------------
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
@@ -142,7 +156,12 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Habilitar Forwarded Headers (CRÍTICO para Render)
+app.UseForwardedHeaders();
+
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
+// ...
+// (rest of the file remains same, but let's update allowedOrigins too)
 logger.LogInformation("ðŸš€ aBitat API â€” Iniciando setup do sistema...");
 
 // 7. MIDDLEWARE - GLOBAL ERROR HANDLING
