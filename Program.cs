@@ -18,7 +18,11 @@ using Rapsodia.DTO.Response;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 0. LOGGING E CONFIGURAÃ‡ÃƒO INICIAL
+// Configuração para o Render (Porta dinâmica)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+builder.WebHost.UseUrls($"http://*:{port}");
+
+// 0. LOGGING E CONFIGURAÇÃO INICIAL
 // ---------------------------------------------------------
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
