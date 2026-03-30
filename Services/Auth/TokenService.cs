@@ -33,8 +33,12 @@ namespace Rapsodia.Services.Auth
             };
 
             var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"] ?? "aBitatAPI",
-                audience: _config["Jwt:Audience"] ?? "aBitatFrontend",
+                issuer: Environment.GetEnvironmentVariable("Jwt__Issuer")
+                        ?? _config["Jwt:Issuer"]
+                        ?? "Rapsodia",
+                audience: Environment.GetEnvironmentVariable("Jwt__Audience")
+                          ?? _config["Jwt:Audience"]
+                          ?? "Rapsodia_Clients",
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(8),
                 signingCredentials: creds

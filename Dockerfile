@@ -8,6 +8,7 @@ RUN dotnet restore "./Rapsodia.csproj"
 
 # Copiar código fonte e publicar
 COPY . .
+RUN echo '{"Logging":{"LogLevel":{"Default":"Warning"}}}' > appsettings.json
 RUN dotnet publish "Rapsodia.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime

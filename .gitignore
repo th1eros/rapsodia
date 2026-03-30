@@ -1,6 +1,4 @@
 # Segredos de Configuração (.NET)
-appsettings.json
-appsettings.*.json
 
 # Segredos de Ambiente (Vite/React)
 .env

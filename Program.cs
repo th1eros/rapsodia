@@ -32,13 +32,16 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 // 1. CONFIGURAÇÃO DE CORS (Whitelist)
 // ---------------------------------------------------------
-var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
-                    ?? new[] {
-                        "http://localhost:3000",
-                        "http://localhost:5173",
-                        "https://th1eros.github.io",
-                        "https://rapsodia-roij.onrender.com"
-                    };
+var corsOrigin = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGIN");
+var allowedOrigins = !string.IsNullOrEmpty(corsOrigin)
+    ? corsOrigin.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    : new[] {
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://th1eros.github.io",
+        "https://rapsodia-roij.onrender.com"
+    };
 
 builder.Services.AddCors(options =>
 {
@@ -52,16 +55,20 @@ builder.Services.AddCors(options =>
 });
 // 2. CONFIGURAÃ‡ÃƒO DE BANCO DE DADOS (RENDER / LOCAL)
 // ---------------------------------------------------------
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") // Prioridade para variável padrão do Render
+                    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("postgresql://"))
+if (!string.IsNullOrEmpty(connectionString) && (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://")))
 {
+    // Converte formato postgres://usuario:senha@host:porta/database para Npgsql
     var databaseUri = new Uri(connectionString);
     var userInfo = databaseUri.UserInfo.Split(':');
     var dbPort = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
+    var host = databaseUri.Host;
+    var dbName = databaseUri.AbsolutePath.TrimStart('/');
 
-    connectionString = $"Host={databaseUri.Host};Port={dbPort};Database={databaseUri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;Trust Server Certificate=true;";
+    connectionString = $"Host={host};Port={dbPort};Database={dbName};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;Trust Server Certificate=true;";
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
