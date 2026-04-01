@@ -39,6 +39,7 @@ var allowedOrigins = !string.IsNullOrEmpty(corsOrigin)
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://ab1tat.github.io",
         "https://th1eros.github.io",
         "https://rapsodia-roij.onrender.com"
     };
@@ -121,7 +122,7 @@ var key = !string.IsNullOrEmpty(jwtKey)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        if (key == null) throw new InvalidOperationException("Chave JWT nÃ£o configurada.");
+        if (key == null) throw new InvalidOperationException("Chave JWT nÃo configurada.");
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
