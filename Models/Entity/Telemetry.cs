@@ -9,10 +9,10 @@ namespace Rapsodia.Models.Entity
         public Guid AgentId { get; set; }
 
         [Required]
-        [MaxLength(20)]
+        [MaxLength(100)]
         public string SessionId { get; set; } = string.Empty;
 
-        [MaxLength(255)]
+        [MaxLength(500)]
         public string TargetFilePath { get; set; } = string.Empty;
 
         [Required]
@@ -24,7 +24,7 @@ namespace Rapsodia.Models.Entity
         public long ProcessingTimeMs { get; set; }
 
         [Required]
-        [MaxLength(20)]
+        [MaxLength(50)]
         public string RiskLevel { get; set; } = string.Empty;
     }
 }
