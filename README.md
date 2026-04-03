@@ -1,10 +1,10 @@
-# ðŸ›¡ï¸ aBitat â€” Enterprise Cyber Assets & Vulnerability Management (ECVM)
+# 🛡️ aBitat — Enterprise Cyber Assets & Vulnerability Management (ECVM)
 
 A high-performance, secure, and scalable RESTful API designed for centralized management of IT assets and security vulnerabilities. Built with **.NET 8** (Long Term Support) following modern software engineering principles.
 
 ---
 
-## ðŸ›ï¸ Enterprise Architecture
+## 🏛️ Enterprise Architecture
 
 The system follows a **Modular Monolith** approach with a clear separation of concerns, ensuring high maintainability and ease of testing.
 
@@ -15,7 +15,7 @@ The system follows a **Modular Monolith** approach with a clear separation of co
 
 ---
 
-## ðŸ› ï¸ Technology Stack & Decisions
+## 🛠️ Technology Stack & Decisions
 
 - **Framework:** .NET 8.0 (ASP.NET Core Web API).
 - **Database:** PostgreSQL (Cloud-native, ACID compliant).
@@ -26,7 +26,7 @@ The system follows a **Modular Monolith** approach with a clear separation of co
 
 ---
 
-## ðŸ” Security & Governance (CIO/CISO Focus)
+## 🔐 Security & Governance (CIO/CISO Focus)
 
 The aBitat API prioritizes the **CIA Triad** (Confidentiality, Integrity, and Availability):
 
@@ -44,7 +44,7 @@ The aBitat API prioritizes the **CIA Triad** (Confidentiality, Integrity, and Av
 
 ---
 
-## ðŸ›°ï¸ Integration & Features
+## 🛰️ Integration & Features
 
 ### 1. Asset Lifecycle Management
 Comprehensive management of IT assets (Operating Systems, WebApps, Databases, APIs, Networks).
@@ -61,7 +61,7 @@ Advanced relationship management allowing the mapping of specific vulnerabilitie
 
 ---
 
-## ðŸ“¦ Deployment & CI/CD
+## 📦 Deployment & CI/CD
 
 - **Containerization:** Ready-to-use `Dockerfile` for standardized environments.
 - **Environment Management:** Configuration via Environment Variables (`Jwt__Key`, `ConnectionStrings__DefaultConnection`).
@@ -69,7 +69,7 @@ Advanced relationship management allowing the mapping of specific vulnerabilitie
 
 ---
 
-## ðŸ“ˆ Roadmap
+## 📈 Roadmap
 
 - [ ] Implementation of Role-Based Access Control (RBAC).
 - [ ] Integration with automated vulnerability scanners (Tenable, Nessus).
