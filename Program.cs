@@ -63,7 +63,16 @@ if (!string.IsNullOrEmpty(connectionString) && (connectionString.StartsWith("pos
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null
+        );
+        npgsqlOptions.CommandTimeout(60);
+    })
+);
 
 // 3. INJEÇÃO DE DEPENDÊNCIA
 // ---------------------------------------------------------

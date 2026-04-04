@@ -13,80 +13,90 @@ namespace Rapsodia.Controllers
     [EnableRateLimiting("auth-limit")]
     public class AuthController : ControllerBase
     {
-        private readonly AppDbContext  _context;
+        private readonly AppDbContext _context;
         private readonly ITokenService _tokenService;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(AppDbContext context, ITokenService tokenService, ILogger<AuthController> logger)
         {
-            _context      = context;
+            _context = context;
             _tokenService = tokenService;
-            _logger       = logger;
+            _logger = logger;
         }
 
-        // POST api/auth/register
         [HttpPost("register")]
         public async Task<ActionResult> Register([FromBody] LoginRequest request)
         {
-            _logger.LogInformation("Tentativa de registro para o usuÃ¡rio: {Username}", request.Username);
-
-            // ValidaÃ§Ã£o de inTropic (Criterio CISO/CTO: LÃ³gica e Probabilidade)
-            if (!IsPasswordStrong(request.Password))
+            try
             {
-                _logger.LogWarning("Senha fraca fornecida para o usuÃ¡rio: {Username}", request.Username);
-                return BadRequest(new { message = "A senha nÃ£o atende aos critÃ©rios de inTropic: deve conter letras maiÃºsculas, minÃºsculas, nÃºmeros e caracteres especiais." });
+                _logger.LogInformation("Tentativa de registro: {Username}", request.Username);
+
+                if (!IsPasswordStrong(request.Password))
+                {
+                    return BadRequest(new { message = "Senha fraca: use maiúsculas, minúsculas, números e símbolos." });
+                }
+
+                if (await _context.Users.AnyAsync(u => u.Username == request.Username))
+                    return Conflict(new { message = "Usuário já existe." });
+
+                var isFirstUser = !await _context.Users.AnyAsync();
+
+                var user = new User
+                {
+                    Username = request.Username,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                    Role = isFirstUser ? "Admin" : "Analyst",
+                    CreatedAt = DateTime.UtcNow // Garantindo padrão UTC para o Supabase
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Usuário {Username} criado com sucesso.", request.Username);
+                return Ok(new { message = $"Usuário criado como {user.Role}." });
             }
-
-            if (await _context.Users.AnyAsync(u => u.Username == request.Username))
-                return Conflict(new { message = "UsuÃ¡rio jÃ¡ existe." });
-
-            // Se for o primeiro usuÃ¡rio, define como Admin
-            var isFirstUser = !await _context.Users.AnyAsync();
-
-            var user = new User
+            catch (Exception ex)
             {
-                Username     = request.Username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Role         = isFirstUser ? "Admin" : "Analyst"
-            };
+                // Este log aparecerá no console da Render
+                _logger.LogError(ex, "Erro crítico no registro do usuário {Username}", request.Username);
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("UsuÃ¡rio {Username} criado com sucesso como {Role}.", request.Username, user.Role);
-            return Ok(new { message = $"UsuÃ¡rio criado com sucesso como {user.Role}." });
+                // Retornamos o erro detalhado temporariamente para debugar
+                return StatusCode(500, new
+                {
+                    message = "Erro interno no servidor ao registrar.",
+                    details = ex.InnerException?.Message ?? ex.Message
+                });
+            }
         }
 
-        // POST api/auth/login
         [HttpPost("login")]
         public async Task<ActionResult> Login([FromBody] LoginRequest request)
         {
-            _logger.LogInformation("Tentativa de login: {Username}", request.Username);
-
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Username == request.Username);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            try
             {
-                _logger.LogWarning("Falha de autenticaÃ§Ã£o para o usuÃ¡rio: {Username}", request.Username);
-                return Unauthorized(new { message = "UsuÃ¡rio ou senha invÃ¡lidos." });
-            }
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Username == request.Username);
 
-            _logger.LogInformation("UsuÃ¡rio {Username} autenticado com sucesso.", request.Username);
-            var token = _tokenService.GenerateToken(user);
-            return Ok(new { token });
+                if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+                {
+                    return Unauthorized(new { message = "Usuário ou senha inválidos." });
+                }
+
+                var token = _tokenService.GenerateToken(user);
+                return Ok(new { token });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro no login: {Username}", request.Username);
+                return StatusCode(500, new { message = "Erro ao processar login." });
+            }
         }
 
         private bool IsPasswordStrong(string password)
         {
             if (string.IsNullOrEmpty(password) || password.Length < 8) return false;
-            
-            bool hasUpper = password.Any(char.IsUpper);
-            bool hasLower = password.Any(char.IsLower);
-            bool hasDigit = password.Any(char.IsDigit);
-            bool hasSpecial = password.Any(c => !char.IsLetterOrDigit(c));
-
-            return hasUpper && hasLower && hasDigit && hasSpecial;
+            return password.Any(char.IsUpper) && password.Any(char.IsLower)
+                && password.Any(char.IsDigit) && password.Any(c => !char.IsLetterOrDigit(c));
         }
     }
 }

@@ -12,8 +12,8 @@ using Rapsodia.Data;
 namespace Rapsodia.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260403210914_UpdateTelemetryConstraints")]
-    partial class UpdateTelemetryConstraints
+    [Migration("20260404022125_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
