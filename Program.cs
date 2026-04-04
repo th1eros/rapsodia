@@ -51,15 +51,18 @@ var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
                     ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
                     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
+// Converte formato URI (postgresql://) para formato Npgsql apenas se necessário
 if (!string.IsNullOrEmpty(connectionString) && (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://")))
 {
     var databaseUri = new Uri(connectionString);
-    var userInfo = databaseUri.UserInfo.Split(':');
+    var userInfo = databaseUri.UserInfo.Split(':', 2); // limit 2 para preservar senha com ':'
     var dbPort = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
     var host = databaseUri.Host;
     var dbName = databaseUri.AbsolutePath.TrimStart('/');
+    var username = Uri.UnescapeDataString(userInfo[0]); // preserva o sufixo .byocqyk...
+    var password = Uri.UnescapeDataString(userInfo[1]);
 
-    connectionString = $"Host={host};Port={dbPort};Database={dbName};Username={userInfo[0]};Password={userInfo[1]};SslMode=Require;Trust Server Certificate=true;";
+    connectionString = $"Host={host};Port={dbPort};Database={dbName};Username={username};Password={password};Ssl Mode=Require;Trust Server Certificate=true;";
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
