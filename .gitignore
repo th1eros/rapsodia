@@ -1,16 +1,64 @@
-# Segredos de Configuração (.NET)
+﻿# ==========================================
+# ESTRATÉGIA DE SEGURANÇA (CISO) - GLOBAL
+# ==========================================
+**/.env
+**/.env.*
+**/appsettings.json
+!**/appsettings.Development.json
+!**/appsettings.Production.json
+!**/.env.example
 
-# Segredos de Ambiente (Vite/React)
-.env
-.env.local
-.env.*.local
-.env.development
-.env.production
+# --- CREDENCIAIS, CHAVES E CERTIFICADOS ---
+**/*.key
+**/*.pem
+**/*.cert
+**/*.pfx
+**/*.pub
+**/*.ppk
+**/*.crt
+**/*.db
+Doc/Key_pub_pvd/
+secrets.json
 
-# Pastas de Build e Cache
-bin/
-obj/
-node_modules/
-dist/
+# --- .NET / C# (RAPSODIA / ORPHEU) ---
+[Bb]in/[Oo]bj/
+Generated\ Files/
+TestResults/
+*.user
 .vs/
 .vscode/
+
+# --- WEB / NODE.JS (FRONTEND / REACT) ---
+node_modules/
+.next/
+out/
+build/
+dist/
+*.log
+
+# --- C++ / NATIVE (ARBITAT ENGINE) ---
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+*.pdb
+ipch/
+.visualstudio/
+*.tlog
+*.lastbuildstate
+
+# --- DATABASE (ORACLE / SQLITE) ---
+*.ora
+*.dmp
+*.sqlite*
+network/admin/tnsnames.ora
+
+# --- INFRA (NGINX / DOCKER) ---
+.docker/
+logs/
+*.pid
+temp/
+proxy_temp/
+client_body_temp/.env
+.aider*

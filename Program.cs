@@ -1,29 +1,34 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using DotNetEnv;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
-using Rapsodia.Data;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Rapsodia.Application.Interfaces;
+using Rapsodia.Data;
+using Rapsodia.DTO.Response;
 using Rapsodia.Services.Assets;
-using Rapsodia.Services.Vulns;
 using Rapsodia.Services.Auth;
 using Rapsodia.Services.Telemetries;
-using Microsoft.EntityFrameworkCore;
-using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.RateLimiting;
-using Rapsodia.DTO.Response;
-using System.Text.Json;
+using Rapsodia.Services.Vulns;
 
-// 0. CONFIGURAÇÃO DE ENCODING (FIX DOS SÍMBOLOS NO TERMINAL)
+// 0. ENCODING + CARREGAR .ENV
 // ---------------------------------------------------------
 Console.OutputEncoding = Encoding.UTF8;
 Console.InputEncoding = Encoding.UTF8;
 
+var envFile = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envFile))
+    Env.Load(envFile);
+
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. CONFIGURAÇÃO DE CORS
+// 1. CORS
 // ---------------------------------------------------------
 var allowedOrigins = new[]
 {
@@ -37,43 +42,42 @@ var allowedOrigins = new[]
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DefaultPolicy", policy =>
-    {
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();
-    });
+              .AllowCredentials());
 });
 
-// 2. CONFIGURAÇÃO DE BANCO DE DADOS (RENDER / LOCAL)
+// 2. BANCO DE DADOS (Refatorado para Segurança/DevSecOps)
 // ---------------------------------------------------------
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-                    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-                    ?? builder.Configuration.GetConnectionString("DefaultConnection");
-
-// Converte formato URI (postgresql://) para formato Npgsql apenas se necessário
-if (!string.IsNullOrEmpty(connectionString) && (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://")))
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+if (File.Exists(envPath))
 {
-    var databaseUri = new Uri(connectionString);
-    var userInfo = databaseUri.UserInfo.Split(':', 2); // limit 2 para preservar senha com ':'
-    var dbPort = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
-    var host = databaseUri.Host;
-    var dbName = databaseUri.AbsolutePath.TrimStart('/');
-    var username = Uri.UnescapeDataString(userInfo[0]); // preserva o sufixo .byocqyk...
-    var password = Uri.UnescapeDataString(userInfo[1]);
-
-    connectionString = $"Host={host};Port={dbPort};Database={dbName};Username={username};Password={password};Ssl Mode=Require;Trust Server Certificate=true;";
+    DotNetEnv.Env.Load(envPath);
 }
+
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+                       ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "ERRO CRÍTICO: String de conexão não encontrada. " +
+        "Verifique se o arquivo .env está na raiz do projeto (mesma pasta do .csproj).");
+}
+
+var dbPass = Environment.GetEnvironmentVariable("DB_PASSWORD");
+if (!string.IsNullOrEmpty(dbPass) && connectionString.Contains("{DB_PASSWORD}"))
+{
+    connectionString = connectionString.Replace("{DB_PASSWORD}", dbPass);
+}
+
+connectionString = Rapsodia.Infrastructure.PostgresConnectionString.Normalize(connectionString);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
-        npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(10),
-            errorCodesToAdd: null
-        );
-        npgsqlOptions.CommandTimeout(60);
+        npgsqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
     })
 );
 
@@ -115,21 +119,26 @@ builder.Services.AddRateLimiter(options =>
 
 // 5. AUTENTICAÇÃO JWT
 // ---------------------------------------------------------
-var jwtKey = Environment.GetEnvironmentVariable("Jwt__Key") ?? builder.Configuration["Jwt:Key"];
-var key = !string.IsNullOrEmpty(jwtKey) ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)) : null;
+var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? builder.Configuration["Jwt:Key"];
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? builder.Configuration["Jwt:Issuer"] ?? "Rapsodia";
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? builder.Configuration["Jwt:Audience"] ?? "Rapsodia_Clients";
+
+if (string.IsNullOrWhiteSpace(jwtKey))
+    throw new InvalidOperationException("Chave JWT não configurada.");
+
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        if (key == null) throw new InvalidOperationException("Chave JWT não configurada.");
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = key,
+            IssuerSigningKey = signingKey,
             ValidateIssuer = true,
-            ValidIssuer = Environment.GetEnvironmentVariable("Jwt__Issuer") ?? builder.Configuration["Jwt:Issuer"] ?? "Rapsodia",
+            ValidIssuer = jwtIssuer,
             ValidateAudience = true,
-            ValidAudience = Environment.GetEnvironmentVariable("Jwt__Audience") ?? builder.Configuration["Jwt:Audience"] ?? "Rapsodia_Clients",
+            ValidAudience = jwtAudience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
@@ -140,7 +149,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "aBitat API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "aBitat- Rapsodia!", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header. Exemplo: \"Bearer {token}\"",
@@ -156,39 +165,42 @@ builder.Services.AddSwaggerGen(c =>
             {
                 Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
-            new string[] {}
+            Array.Empty<string>()
         }
     });
 });
 
 var app = builder.Build();
 
+// PIPELINE
 app.UseForwardedHeaders();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("🚀 aBitat- Rapsodia! — Iniciando setup do sistema...");
 
-logger.LogInformation("🚀 aBitat API — Iniciando setup do sistema...");
-
-// 7. MIDDLEWARE - GLOBAL ERROR HANDLING
+// 7. GLOBAL ERROR HANDLING
 // ---------------------------------------------------------
 app.UseExceptionHandler(errorApp =>
 {
     errorApp.Run(async context =>
     {
-        var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
-        var exception = exceptionHandlerPathFeature?.Error;
+        var feature = context.Features.Get<IExceptionHandlerPathFeature>();
+        var exception = feature?.Error;
         var localLogger = context.RequestServices.GetRequiredService<ILogger<Program>>();
         localLogger.LogError(exception, "❌ EXCEÇÃO NÃO TRATADA: {Message}", exception?.Message);
+
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
         context.Response.ContentType = "application/json";
         await context.Response.WriteAsJsonAsync(new ResponseModel<object>
         {
             Status = false,
-            Mensagem = app.Environment.IsDevelopment() ? $"Erro Interno: {exception?.Message}" : "Erro interno no servidor."
+            Mensagem = app.Environment.IsDevelopment()
+                ? $"Erro Interno: {exception?.Message}"
+                : "Erro interno no servidor."
         });
     });
 });
 
-// 8. MIDDLEWARE - PIPELINE
+// 8. PIPELINE DE MIDDLEWARE
 // ---------------------------------------------------------
 if (!app.Environment.IsDevelopment())
 {
@@ -202,8 +214,16 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
     context.Response.Headers.Append("Referrer-Policy", "no-referrer");
-    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
+    context.Response.Headers.Append("Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
     await next();
+});
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "aBitat- Rapsodia!");
+    c.RoutePrefix = "swagger";
 });
 
 app.UseRouting();
@@ -211,15 +231,6 @@ app.UseCors("DefaultPolicy");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
-
-if (app.Environment.IsDevelopment() || true)
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c => {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "aBitat API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
 
 app.MapGet("/", () => Results.Redirect("/swagger"));
 app.MapGet("/health", () => Results.Ok(new { status = "API Online", timestamp = DateTime.UtcNow }));
@@ -229,10 +240,9 @@ app.MapControllers();
 // ---------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
     try
     {
-        var context = services.GetRequiredService<AppDbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
         logger.LogInformation("✅ Banco de dados sincronizado e tabelas prontas!");
     }

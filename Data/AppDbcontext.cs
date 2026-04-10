@@ -2,10 +2,12 @@ using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Rapsodia.Models.Entity;
+using Rapsodia.Helpers; // Certifique-se que o namespace do seu Helper está aqui
 
 namespace Rapsodia.Data
 {
@@ -24,50 +26,58 @@ namespace Rapsodia.Data
             base.OnModelCreating(modelBuilder);
 
             // 1. IMUTABILIDADE DE CRIAÇÃO
-            var entitiesWithCreatedAt = new[] { typeof(Asset), typeof(Vuln), typeof(User), typeof(Telemetry) };
-            foreach (var type in entitiesWithCreatedAt)
-            {
-                modelBuilder.Entity(type).Property("CreatedAt")
-                    .ValueGeneratedOnAdd().Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
-            }
-
             modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
 
-            // 2. CONFIGURAÇÃO N:N (ASSETS-VULNS)
+            // 2. CONFIGURAÇÃO N:N (ASSETS ↔ VULNS)
             modelBuilder.Entity<AssetVuln>().HasKey(av => new { av.AssetId, av.VulnId });
             modelBuilder.Entity<AssetVuln>().ToTable("assets_vulnerabilidades");
-            modelBuilder.Entity<AssetVuln>().Property(av => av.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            modelBuilder.Entity<AssetVuln>()
+                .Property(av => av.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
             modelBuilder.Entity<AssetVuln>()
-                .HasOne(av => av.Asset).WithMany(a => a.AssetVulns)
-                .HasForeignKey(av => av.AssetId).OnDelete(DeleteBehavior.Restrict);
+                .HasOne(av => av.Asset)
+                .WithMany(a => a.AssetVulns)
+                .HasForeignKey(av => av.AssetId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<AssetVuln>()
-                .HasOne(av => av.Vuln).WithMany(v => v.AssetVulns)
-                .HasForeignKey(av => av.VulnId).OnDelete(DeleteBehavior.Restrict);
+                .HasOne(av => av.Vuln)
+                .WithMany(v => v.AssetVulns)
+                .HasForeignKey(av => av.VulnId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // 3. FILTROS GLOBAIS (SOFT DELETE) - Garantindo que registros novos apareçam
+            // 3. FILTROS GLOBAIS (SOFT DELETE)
             modelBuilder.Entity<Asset>().HasQueryFilter(a => a.DeletedAt == null);
             modelBuilder.Entity<Vuln>().HasQueryFilter(v => v.DeletedAt == null);
             modelBuilder.Entity<User>().HasQueryFilter(u => u.DeletedAt == null);
             modelBuilder.Entity<Telemetry>().HasQueryFilter(t => t.DeletedAt == null);
+            modelBuilder.Entity<AssetVuln>().HasQueryFilter(
+                av => av.Asset.DeletedAt == null && av.Vuln.DeletedAt == null);
 
-            // 4. CRIPTOGRAFIA DE CAMADA (CISO STRATEGY)
-            // Transforma o dado em Base64 no banco (ilegitível para curiosos) e volta ao normal no App
-            var secureConverter = new ValueConverter<string, string>(
-                v => Convert.ToBase64String(Encoding.UTF8.GetBytes(v)), // Para o Banco
-                v => Encoding.UTF8.GetString(Convert.FromBase64String(v)) // Para o Admin
-            );
+            // 4. CRIPTOGRAFIA REAL — AES-256-GCM
+            var rawKey = Environment.GetEnvironmentVariable("FIELD_ENCRYPTION_KEY");
+            if (!string.IsNullOrWhiteSpace(rawKey))
+            {
+                var keyBytes = Convert.FromBase64String(rawKey);
+                if (keyBytes.Length != 32)
+                    throw new InvalidOperationException("FIELD_ENCRYPTION_KEY deve ter 32 bytes.");
 
-            modelBuilder.Entity<Telemetry>()
-                .Property(t => t.TargetFilePath)
-                .HasConversion(secureConverter);
+                // Uso do Helper para evitar erros de Expression Tree
+                var aesConverter = new ValueConverter<string, string>(
+                    v => AesGcmHelper.Encrypt(v, keyBytes),
+                    v => AesGcmHelper.Decrypt(v, keyBytes)
+                );
 
-            // 5. CONVERSÃO DE ENUMS
+                modelBuilder.Entity<Telemetry>()
+                    .Property(t => t.TargetFilePath)
+                    .HasConversion(aesConverter);
+            }
+
+            // 5. CONVERSÃO DE ENUMS PARA STRING
             modelBuilder.Entity<Vuln>().Property(v => v.Ambiente).HasConversion<string>();
             modelBuilder.Entity<Vuln>().Property(v => v.Nivel).HasConversion<string>();
             modelBuilder.Entity<Vuln>().Property(v => v.Status).HasConversion<string>();
-
             modelBuilder.Entity<Asset>().Property(a => a.Tipo).HasConversion<string>();
             modelBuilder.Entity<Asset>().Property(a => a.Ambiente).HasConversion<string>();
         }
@@ -91,20 +101,20 @@ namespace Rapsodia.Data
 
             foreach (var entry in entries)
             {
-                if (entry.State == EntityState.Added)
+                switch (entry.State)
                 {
-                    entry.Entity.CreatedAt = now;
-                }
-                else if (entry.State == EntityState.Modified)
-                {
-                    entry.Property(nameof(BaseEntity.CreatedAt)).IsModified = false;
-                    entry.Entity.UpdatedAt = now;
-                }
-                else if (entry.State == EntityState.Deleted)
-                {
-                    entry.State = EntityState.Modified;
-                    entry.Entity.DeletedAt = now;
-                    entry.Entity.UpdatedAt = now;
+                    case EntityState.Added:
+                        entry.Entity.CreatedAt = now;
+                        break;
+                    case EntityState.Modified:
+                        entry.Property(nameof(BaseEntity.CreatedAt)).IsModified = false;
+                        entry.Entity.UpdatedAt = now;
+                        break;
+                    case EntityState.Deleted:
+                        entry.State = EntityState.Modified;
+                        entry.Entity.DeletedAt = now;
+                        entry.Entity.UpdatedAt = now;
+                        break;
                 }
             }
         }
