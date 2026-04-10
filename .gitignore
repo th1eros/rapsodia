@@ -8,6 +8,11 @@
 !**/appsettings.Production.json
 !**/.env.example
 
+# Pastas de compilação
+bin/
+obj/
+publish/
+
 # --- CREDENCIAIS, CHAVES E CERTIFICADOS ---
 **/*.key
 **/*.pem
@@ -17,7 +22,7 @@
 **/*.ppk
 **/*.crt
 **/*.db
-Doc/Key_pub_pvd/
+Doc\Keys\
 secrets.json
 
 # --- .NET / C# (RAPSODIA / ORPHEU) ---
