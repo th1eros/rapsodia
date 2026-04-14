@@ -1,0 +1,20 @@
+services:
+  rapsodia:
+    build:
+      context: .
+      args:
+        - USER_ID=${UID}
+        - GROUP_ID=${GID}
+    container_name: abitat_rapsodia_dev
+    restart: always
+    env_file: .env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "10000:10000"
+    networks:
+      - abitat_network
+
+networks:
+  abitat_network:
+    external: true

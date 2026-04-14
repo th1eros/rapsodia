@@ -40,8 +40,7 @@ out/
 build/
 dist/
 *.log
-
-# --- C++ / NATIVE (ARBITAT ENGINE) ---
+# --- C++ / NATIVE (ABITAT ENGINE) ---
 *.exe
 *.dll
 *.so
@@ -66,4 +65,5 @@ logs/
 temp/
 proxy_temp/
 client_body_temp/.env
-.aider*
+
+

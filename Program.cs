@@ -36,7 +36,9 @@ var allowedOrigins = new[]
     "http://127.0.0.1:5173",
     "https://ab1tat.github.io",
     "https://th1eros.github.io",
-    "https://rapsodia-roij.onrender.com"
+    "https://th1eros.com",     
+    "https://www.th1eros.com",  
+    "https://th1eros.dev"      
 };
 
 builder.Services.AddCors(options =>
@@ -171,8 +173,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
-
-// PIPELINE
+app.UsePathBase("/api");
 app.UseForwardedHeaders();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("🚀 aBitat- Rapsodia! — Iniciando setup do sistema...");
@@ -202,7 +203,7 @@ app.UseExceptionHandler(errorApp =>
 
 // 8. PIPELINE DE MIDDLEWARE
 // ---------------------------------------------------------
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
     app.UseHsts();
@@ -220,11 +221,15 @@ app.Use(async (context, next) =>
 });
 
 app.UseSwagger();
-app.UseSwaggerUI(c =>
+
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("EnableSwagger"))
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "aBitat- Rapsodia!");
-    c.RoutePrefix = "swagger";
-});
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("v1/swagger.json", "aBitat- Rapsodia!");
+        c.RoutePrefix = "swagger";
+    });
+}
 
 app.UseRouting();
 app.UseCors("DefaultPolicy");
