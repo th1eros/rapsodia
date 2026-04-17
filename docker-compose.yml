@@ -1,17 +1,14 @@
 services:
   rapsodia:
-    build:
-      context: .
-      args:
-        - USER_ID=${UID}
-        - GROUP_ID=${GID}
-    container_name: abitat_rapsodia_dev
+    image: thieros/rapsodia-backend:${TAG:-latest}
+    container_name: abitat_rapsodia_${ENV_NAME:-dev}
     restart: always
     env_file: .env
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=${DOTNET_ENV:-Development}
+      - ConnectionStrings__DefaultConnection=${DATABASE_URL}
     ports:
-      - "10000:10000"
+      - "${PORT:-10000}:10000"
     networks:
       - abitat_network
 

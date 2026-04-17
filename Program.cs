@@ -121,14 +121,18 @@ builder.Services.AddRateLimiter(options =>
 
 // 5. AUTENTICAÇÃO JWT
 // ---------------------------------------------------------
-var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? builder.Configuration["Jwt:Key"];
-var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? builder.Configuration["Jwt:Issuer"] ?? "Rapsodia";
-var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? builder.Configuration["Jwt:Audience"] ?? "Rapsodia_Clients";
-
-if (string.IsNullOrWhiteSpace(jwtKey))
-    throw new InvalidOperationException("Chave JWT não configurada.");
+var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
+             ?? builder.Configuration["Jwt:Key"]
+             ?? throw new InvalidOperationException("ERRO CRÍTICO: JWT_KEY não configurada na Fonte da Verdade (.env).");
 
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
+                ?? builder.Configuration["Jwt:Issuer"]
+                ?? throw new InvalidOperationException("JWT_ISSUER ausente.");
+
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+                  ?? builder.Configuration["Jwt:Audience"]
+                  ?? throw new InvalidOperationException("JWT_AUDIENCE ausente.");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -136,11 +140,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = signingKey,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
             ValidateIssuer = true,
-            ValidIssuer = jwtIssuer,
+            ValidIssuer = jwtIssuer, 
             ValidateAudience = true,
-            ValidAudience = jwtAudience,
+            ValidAudience = jwtAudience, 
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
@@ -173,7 +177,6 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
-app.UsePathBase("/api");
 app.UseForwardedHeaders();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("🚀 aBitat- Rapsodia! — Iniciando setup do sistema...");
@@ -203,7 +206,7 @@ app.UseExceptionHandler(errorApp =>
 
 // 8. PIPELINE DE MIDDLEWARE
 // ---------------------------------------------------------
-if (app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
     app.UseHsts();
@@ -241,19 +244,37 @@ app.MapGet("/", () => Results.Redirect("/swagger"));
 app.MapGet("/health", () => Results.Ok(new { status = "API Online", timestamp = DateTime.UtcNow }));
 app.MapControllers();
 
-// 9. SINCRONIZAÇÃO AUTOMÁTICA DO BANCO
-// ---------------------------------------------------------
+// 9. SINCRONIZAÇÃO AUTOMÁTICA DO BANCO (DevSecOps: Migração via Porta Direta)
+// ------------------------------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
     try
     {
-        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        context.Database.Migrate();
-        logger.LogInformation("✅ Banco de dados sincronizado e tabelas prontas!");
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // Usamos o HOST de migração específico do seu .env
+        var migrationHost = Environment.GetEnvironmentVariable("DB_HOST_MIGRATIONS");
+        var dbName = Environment.GetEnvironmentVariable("DB_NAME");
+
+        if (!string.IsNullOrEmpty(migrationHost) && !string.IsNullOrEmpty(dbPass))
+        {
+            var poolerHost = Environment.GetEnvironmentVariable("POOLER_HOST")!;
+            var dbUser = Environment.GetEnvironmentVariable("DB_USER_MIGRATIONS")!;
+
+            var migrationConnString = $"Host={poolerHost};Port=5432;Database={dbName};Username={dbUser};Password={dbPass};Ssl Mode=Require;Trust Server Certificate=true;";
+
+            dbContext.Database.GetDbConnection().ConnectionString = migrationConnString;
+            logger.LogInformation("🔄 Migrando via Session Pooler (5432)...");
+        }
+
+        dbContext.Database.Migrate();
+        logger.LogInformation("✅ Banco de dados sincronizado!");
+
+        dbContext.Database.GetDbConnection().ConnectionString = connectionString;
     }
     catch (Exception ex)
     {
-        logger.LogCritical(ex, "❌ ERRO AO PREPARAR O BANCO: {Message}", ex.Message);
+        logger.LogCritical(ex, "❌ ERRO NO SETUP: {Message}", ex.Message);
     }
 }
 
