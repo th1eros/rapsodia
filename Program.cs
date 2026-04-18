@@ -123,9 +123,10 @@ builder.Services.AddRateLimiter(options =>
 // ---------------------------------------------------------
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
              ?? builder.Configuration["Jwt:Key"]
-             ?? throw new InvalidOperationException("ERRO CRÍTICO: JWT_KEY não configurada na Fonte da Verdade (.env).");
+             ?? throw new InvalidOperationException("ERRO CRÍTICO: JWT_KEY não configurada...");
 
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER")
                 ?? builder.Configuration["Jwt:Issuer"]
                 ?? throw new InvalidOperationException("JWT_ISSUER ausente.");
@@ -140,7 +141,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            IssuerSigningKey = signingKey,
             ValidateIssuer = true,
             ValidIssuer = jwtIssuer, 
             ValidateAudience = true,
