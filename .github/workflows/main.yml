@@ -33,6 +33,7 @@ jobs:
       - name: Build and Push
         run: |
           docker build \
+            --platform linux/arm64 \
             --target ${{ env.DOCKER_TARGET }} \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/rapsodia-backend:${{ env.IMAGE_TAG }} .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rapsodia-backend:${{ env.IMAGE_TAG }}
