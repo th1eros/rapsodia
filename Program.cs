@@ -26,7 +26,7 @@ var envFile = Path.Combine(Directory.GetCurrentDirectory(), ".env");
 if (File.Exists(envFile))
     Env.Load(envFile);
 
-var builder = WebApplicationBuilder.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 // 0.5 ALLOWED HOSTS + KESTREL (DevSecOps - Permite healthcheck interno)
 // ---------------------------------------------------------
