@@ -21,7 +21,9 @@ namespace Rapsodia.Services.Auth
         // [CTO] O nome DEVE ser exatamente GenerateToken para bater com a interface
         public string GenerateToken(User user)
         {
-            var keyStr = _config["Jwt:Key"] ?? "Chave_Mestra_Super_Secreta_aBitat_2026";
+            var keyStr = Environment.GetEnvironmentVariable("JWT_KEY")
+                         ?? _config["Jwt:Key"]
+                         ?? throw new InvalidOperationException("JWT_KEY não configurada.");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -33,17 +35,14 @@ namespace Rapsodia.Services.Auth
             };
 
             var token = new JwtSecurityToken(
-                issuer: Environment.GetEnvironmentVariable("Jwt__Issuer")
-                        ?? _config["Jwt:Issuer"]
-                        ?? "Rapsodia",
-                audience: Environment.GetEnvironmentVariable("Jwt__Audience")
-                          ?? _config["Jwt:Audience"]
-                          ?? "Rapsodia_Clients",
+                issuer: Environment.GetEnvironmentVariable("JWT_ISSUER")
+                        ?? _config["Jwt:Issuer"],
+                audience: Environment.GetEnvironmentVariable("JWT_AUDIENCE")
+                          ?? _config["Jwt:Audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddHours(8),
                 signingCredentials: creds
             );
-
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }

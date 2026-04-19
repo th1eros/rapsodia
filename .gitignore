@@ -1,19 +1,15 @@
 ﻿# ==========================================
-# ESTRATÉGIA DE SEGURANÇA (CISO) - GLOBAL
+# GLOBAL
 # ==========================================
-**/.env
+.env
 **/.env.*
-**/appsettings.json
+!**/appsettings.json
 !**/appsettings.Development.json
 !**/appsettings.Production.json
 !**/.env.example
-
-# Pastas de compilação
 bin/
 obj/
 publish/
-
-# --- CREDENCIAIS, CHAVES E CERTIFICADOS ---
 **/*.key
 **/*.pem
 **/*.cert
@@ -25,7 +21,7 @@ publish/
 Doc\Keys\
 secrets.json
 
-# --- .NET / C# (RAPSODIA / ORPHEU) ---
+# --- .NET / C# (RAPSODIA)---
 [Bb]in/[Oo]bj/
 Generated\ Files/
 TestResults/
@@ -40,7 +36,7 @@ out/
 build/
 dist/
 *.log
-# --- C++ / NATIVE (ABITAT ENGINE) ---
+# --- C++ / NATIVE---
 *.exe
 *.dll
 *.so
@@ -51,14 +47,10 @@ ipch/
 .visualstudio/
 *.tlog
 *.lastbuildstate
-
-# --- DATABASE (ORACLE / SQLITE) ---
 *.ora
 *.dmp
 *.sqlite*
 network/admin/tnsnames.ora
-
-# --- INFRA (NGINX / DOCKER) ---
 .docker/
 logs/
 *.pid
