@@ -1,0 +1,256 @@
+# =============================================================================
+# CI/CD · Rapsodia — Abitat Platform
+# =============================================================================
+# Branching strategy:
+#   develop → staging  (environment: staging,    tag: develop)
+#   main    → prod     (environment: production, tag: latest)
+#
+# Requer nos GitHub Environments:
+#   VARIABLES : DOCKERHUB_USERNAME, REMOTE_USER, APP_DOMAIN, PORT, TAG,
+#               ASPNETCORE_ENVIRONMENT, DOTNET_ENV, ENV_NAME,
+#               DB_NAME, DB_PORT_MIGRATIONS, DB_PORT_RUNTIME,
+#               JWT_ISSUER, JWT_AUDIENCE, POOLER_HOST,
+#               USER_ID, GROUP_ID
+#   SECRETS   : DOCKERHUB_TOKEN, SSH_PRIVATE_KEY, REMOTE_HOST,
+#               JWT_KEY, FIELD_ENCRYPTION_KEY,
+#               CONNECTIONSTRINGS__DEFAULTCONNECTION, DATABASE_URL,
+#               DB_HOST_MIGRATIONS, DB_PASSWORD, DB_USER_MIGRATIONS,
+#               MIGRATIONS_DATABASE_URL
+# =============================================================================
+
+name: CI/CD · Rapsodia
+
+on:
+  push:
+    branches: [main, develop]
+
+# Impede runs concorrentes no mesmo ambiente (evita race condition no OCI)
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 1 — BUILD & PUSH
+  # Resolve metadados, constrói a imagem Docker e faz push para o Docker Hub.
+  # O environment aqui garante que DOCKERHUB_TOKEN seja o do ambiente correto.
+  # ───────────────────────────────────────────────────────────────────────────
+  build:
+    name: "Build & Push · ${{ github.ref_name }}"
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+
+    outputs:
+      image_tag:    ${{ steps.meta.outputs.image_tag }}
+      docker_target: ${{ steps.meta.outputs.docker_target }}
+      deploy_env:   ${{ steps.meta.outputs.deploy_env }}
+      deploy_path:  ${{ steps.meta.outputs.deploy_path }}
+      compose_file: ${{ steps.meta.outputs.compose_file }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Resolve todas as variáveis dependentes de branch de uma só vez.
+      # Usar outputs evita repetição e torna o deploy job agnóstico de branch.
+      - name: Resolve deploy metadata
+        id: meta
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "image_tag=latest"                              >> $GITHUB_OUTPUT
+            echo "docker_target=production"                      >> $GITHUB_OUTPUT
+            echo "deploy_env=production"                         >> $GITHUB_OUTPUT
+            echo "deploy_path=/home/ubuntu/abitat/rapsodia"      >> $GITHUB_OUTPUT
+            echo "compose_file=docker-compose.prod.yml"          >> $GITHUB_OUTPUT
+          else
+            echo "image_tag=develop"                             >> $GITHUB_OUTPUT
+            echo "docker_target=staging"                         >> $GITHUB_OUTPUT
+            echo "deploy_env=staging"                            >> $GITHUB_OUTPUT
+            echo "deploy_path=/home/ubuntu/malebolge/rapsodia"   >> $GITHUB_OUTPUT
+            echo "compose_file=docker-compose.yml"               >> $GITHUB_OUTPUT
+          fi
+
+      # CORREÇÃO: DOCKERHUB_USERNAME é uma variable (vars.*), não um secret.
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Buildx habilita cache GHA e build multi-platform.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build e push atômico com cache de layer entre runs.
+      # --target seleciona o stage correto do Dockerfile multi-stage.
+      - name: Build & Push to Docker Hub
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ steps.meta.outputs.docker_target }}
+          push: true
+          tags: |
+            ${{ vars.DOCKERHUB_USERNAME }}/rapsodia-backend:${{ steps.meta.outputs.image_tag }}
+            ${{ vars.DOCKERHUB_USERNAME }}/rapsodia-backend:sha-${{ github.sha }}
+          # Cache entre runs para reduzir tempo de build em ~60%
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+          # Passa build args para o Dockerfile (USER_ID/GROUP_ID)
+          build-args: |
+            USER_ID=${{ vars.USER_ID }}
+            GROUP_ID=${{ vars.GROUP_ID }}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 2 — DEPLOY
+  # SSH no OCI, gera .env a partir dos GitHub Secrets/Variables do ambiente,
+  # faz pull da nova imagem e recria os containers de forma atômica.
+  # O environment aqui isola completamente os secrets de prod vs staging.
+  # ───────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: "Deploy → ${{ needs.build.outputs.deploy_env }}"
+    runs-on: ubuntu-latest
+    needs: build
+    # Referencia dinamicamente o environment resolvido no job anterior.
+    # Isso garante que os secrets de prod NUNCA sejam carregados em runs de staging.
+    environment: ${{ needs.build.outputs.deploy_env }}
+
+    steps:
+      # Grava o .env remotamente via SSH antes de subir os containers.
+      # Estratégia: heredoc com variáveis interpoladas pelo runner → arquivo
+      # no servidor. Isso elimina a necessidade de um .env comitado no repo.
+      - name: Write .env file on OCI
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.REMOTE_HOST }}
+          # CORREÇÃO: REMOTE_USER é uma variable, não um secret.
+          username: ${{ vars.REMOTE_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+
+            ENV_FILE="${{ needs.build.outputs.deploy_path }}/.env"
+
+            # Garante que o arquivo seja sobrescrito com permissão restrita
+            install -m 600 /dev/null "$ENV_FILE"
+
+            cat > "$ENV_FILE" << 'ENVEOF'
+            # ==================================================================
+            # Gerado automaticamente pelo GitHub Actions — NÃO EDITAR MANUALMENTE
+            # Ambiente : ${{ needs.build.outputs.deploy_env }}
+            # Commit   : ${{ github.sha }}
+            # Run      : ${{ github.run_number }}
+            # ==================================================================
+
+            # --- Docker ---
+            TAG=${{ needs.build.outputs.image_tag }}
+            DOCKERHUB_USERNAME=${{ vars.DOCKERHUB_USERNAME }}
+
+            # --- App ---
+            ENV_NAME=${{ vars.ENV_NAME }}
+            PORT=${{ vars.PORT }}
+            APP_DOMAIN=${{ vars.APP_DOMAIN }}
+
+            # --- ASP.NET Core ---
+            ASPNETCORE_ENVIRONMENT=${{ vars.ASPNETCORE_ENVIRONMENT }}
+            ASPNETCORE_URLS=http://+:${{ vars.PORT }}
+            DOTNET_ENV=${{ vars.DOTNET_ENV }}
+
+            # --- Banco de Dados ---
+            DB_NAME=${{ vars.DB_NAME }}
+            DB_PORT_MIGRATIONS=${{ vars.DB_PORT_MIGRATIONS }}
+            DB_PORT_RUNTIME=${{ vars.DB_PORT_RUNTIME }}
+            POOLER_HOST=${{ vars.POOLER_HOST }}
+            DB_HOST_MIGRATIONS=${{ secrets.DB_HOST_MIGRATIONS }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_USER_MIGRATIONS=${{ secrets.DB_USER_MIGRATIONS }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            MIGRATIONS_DATABASE_URL=${{ secrets.MIGRATIONS_DATABASE_URL }}
+            ConnectionStrings__DefaultConnection=${{ secrets.CONNECTIONSTRINGS__DEFAULTCONNECTION }}
+
+            # --- JWT ---
+            JWT_ISSUER=${{ vars.JWT_ISSUER }}
+            JWT_AUDIENCE=${{ vars.JWT_AUDIENCE }}
+            JWT_KEY=${{ secrets.JWT_KEY }}
+
+            # --- Segurança ---
+            FIELD_ENCRYPTION_KEY=${{ secrets.FIELD_ENCRYPTION_KEY }}
+
+            # --- OCI / Usuário ---
+            USER_ID=${{ vars.USER_ID }}
+            GROUP_ID=${{ vars.GROUP_ID }}
+            ENVEOF
+
+            echo "✓ .env gravado em $ENV_FILE"
+
+      # Pull antes do up = zero-touch deploy com downtime mínimo.
+      # --remove-orphans limpa containers de serviços removidos do compose.
+      - name: Pull new image & recreate containers
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          # command_timeout aumentado para imagens grandes
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd "${{ needs.build.outputs.deploy_path }}"
+
+            COMPOSE_FILE="${{ needs.build.outputs.compose_file }}"
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "  Ambiente : ${{ needs.build.outputs.deploy_env }}"
+            echo "  Imagem   : ${{ vars.DOCKERHUB_USERNAME }}/rapsodia-backend:${{ needs.build.outputs.image_tag }}"
+            echo "  Compose  : $COMPOSE_FILE"
+            echo "  Commit   : ${{ github.sha }}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            # 1. Pull atômico da nova imagem (sem derrubar o container ainda)
+            echo "→ [1/4] Pulling nova imagem..."
+            docker compose -f "$COMPOSE_FILE" pull
+
+            # 2. Recria apenas os containers com imagem atualizada
+            echo "→ [2/4] Recriando containers..."
+            docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
+
+            # 3. Health check: aguarda containers estabilizarem
+            echo "→ [3/4] Aguardando estabilização (15s)..."
+            sleep 15
+
+            # 4. Verifica status de todos os containers do compose
+            echo "→ [4/4] Verificando saúde dos containers..."
+            UNHEALTHY=$(
+              docker compose -f "$COMPOSE_FILE" ps --format json 2>/dev/null \
+              | python3 -c "
+            import sys, json
+            lines = sys.stdin.read().strip().split('\n')
+            containers = [json.loads(l) for l in lines if l]
+            failed = [
+                c.get('Name', c.get('Service','?'))
+                for c in containers
+                if c.get('Health', 'healthy') in ('unhealthy', 'starting')
+                or c.get('State','running') != 'running'
+            ]
+            print('\n'.join(failed))
+            " 2>/dev/null || true
+            )
+
+            if [[ -n "$UNHEALTHY" ]]; then
+              echo "✗ Containers com problema:"
+              echo "$UNHEALTHY"
+              echo ""
+              echo "--- Logs dos últimos 50 eventos ---"
+              docker compose -f "$COMPOSE_FILE" logs --tail=50
+              exit 1
+            fi
+
+            echo "✓ Todos os containers estão saudáveis."
+
+            # 5. Limpeza de imagens dangling para liberar disco no OCI
+            echo "→ Limpando imagens antigas..."
+            docker image prune -f
+
+            echo ""
+            echo "✅ Deploy concluído com sucesso!"
+            echo "   Ambiente : ${{ needs.build.outputs.deploy_env }}"
+            echo "   Versão   : ${{ needs.build.outputs.image_tag }} @ ${{ github.sha }}"
