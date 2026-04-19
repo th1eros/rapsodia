@@ -1,13 +1,36 @@
 name: CI/CD Pipeline
+
 on:
   push:
     branches: [ main, develop ]
 
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: thieros/rapsodia-backend
+
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Run tests
+        run: dotnet test --no-restore --verbosity normal
+
   build-and-deploy:
+    needs: test
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -30,40 +53,92 @@ jobs:
             echo "IMAGE_TAG=latest" >> $GITHUB_ENV
             echo "DOCKER_TARGET=production" >> $GITHUB_ENV
             echo "DOTNET_ENV=Production" >> $GITHUB_ENV
+            echo "DEPLOY_HOST=${{ secrets.REMOTE_HOST }}" >> $GITHUB_ENV
+            echo "DEPLOY_PATH=/home/ubuntu/abitat/rapsodia" >> $GITHUB_ENV
           else
             echo "IMAGE_TAG=staging" >> $GITHUB_ENV
             echo "DOCKER_TARGET=staging" >> $GITHUB_ENV
             echo "DOTNET_ENV=Staging" >> $GITHUB_ENV
+            echo "DEPLOY_HOST=${{ secrets.REMOTE_HOST_STAGING }}" >> $GITHUB_ENV
+            echo "DEPLOY_PATH=/home/ubuntu/malebolge/rapsodia" >> $GITHUB_ENV
           fi
 
-      - name: Build and Push
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ env.DOCKER_TARGET }}
+          platforms: linux/arm64
+          push: false
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Run Trivy vulnerability scanning
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Push to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ env.DOCKER_TARGET }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy to ${{ env.DOCKER_TARGET }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ env.DEPLOY_PATH }}
+            docker compose pull
+            docker compose up -d
+            sleep 5
+            docker compose ps
+
+      - name: Healthcheck validation
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            CONTAINER_ID=$(docker ps --filter "label=com.docker.compose.service=rapsodia" --format "{{.ID}}" | head -1)
+            if [ -z "$CONTAINER_ID" ]; then
+              echo "❌ Container not running!"
+              exit 1
+            fi
+            
+            for i in {1..30}; do
+              if docker exec $CONTAINER_ID curl -sf http://localhost:${{ env.DOCKER_TARGET == 'production' && '10000' || '10001' }}/health > /dev/null 2>&1; then
+                echo "✅ Healthcheck passed!"
+                exit 0
+              fi
+              echo "Waiting for container to be healthy... ($i/30)"
+              sleep 2
+            done
+            
+            echo "❌ Healthcheck failed!"
+            exit 1
+
+      - name: Notify on failure
+        if: failure()
         run: |
-          docker buildx build \
-            --platform linux/arm64 \
-            --target ${{ env.DOCKER_TARGET }} \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/rapsodia-backend:${{ env.IMAGE_TAG }} \
-            --push .
+          echo "❌ Deployment failed for ${{ env.DOCKER_TARGET }}"
+          exit 1
 
-      - name: Deploy to Production
-        if: github.ref == 'refs/heads/main'
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /home/ubuntu/abitat/rapsodia
-            docker compose pull
-            docker compose up -d
-
-      - name: Deploy to Staging (Malebolge)
-        if: github.ref == 'refs/heads/develop'
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.REMOTE_HOST_STAGING }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /home/ubuntu/malebolge/rapsodia
-            docker compose pull
-            docker compose up -d
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ Deployment successful for ${{ env.DOCKER_TARGET }}"
