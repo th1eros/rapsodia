@@ -26,7 +26,17 @@ var envFile = Path.Combine(Directory.GetCurrentDirectory(), ".env");
 if (File.Exists(envFile))
     Env.Load(envFile);
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplicationBuilder.CreateBuilder(args);
+
+// 0.5 ALLOWED HOSTS + KESTREL (DevSecOps - Permite healthcheck interno)
+// ---------------------------------------------------------
+builder.Configuration["AllowedHosts"] = "*";
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.AllowSynchronousIO = true;
+    options.DisableStringReuse = false;
+});
 
 // 1. CORS
 // ---------------------------------------------------------
@@ -36,9 +46,9 @@ var allowedOrigins = new[]
     "http://127.0.0.1:5173",
     "https://ab1tat.github.io",
     "https://th1eros.github.io",
-    "https://th1eros.com",     
-    "https://www.th1eros.com",  
-    "https://th1eros.dev"      
+    "https://th1eros.com",
+    "https://www.th1eros.com",
+    "https://th1eros.dev"
 };
 
 builder.Services.AddCors(options =>
@@ -143,9 +153,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = signingKey,
             ValidateIssuer = true,
-            ValidIssuer = jwtIssuer, 
+            ValidIssuer = jwtIssuer,
             ValidateAudience = true,
-            ValidAudience = jwtAudience, 
+            ValidAudience = jwtAudience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
@@ -242,7 +252,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/", () => Results.Redirect("/swagger"));
-app.MapGet("/health", () => Results.Ok(new { status = "API Online", timestamp = DateTime.UtcNow }));
+app.MapGet("/health", () => Results.Ok(new { status = "API Online", timestamp = DateTime.UtcNow })).AllowAnonymous();
 app.MapControllers();
 
 // 9. SINCRONIZAÇÃO AUTOMÁTICA DO BANCO (DevSecOps: Migração via Porta Direta)
@@ -252,8 +262,6 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        // Usamos o HOST de migração específico do seu .env
         var migrationHost = Environment.GetEnvironmentVariable("DB_HOST_MIGRATIONS");
         var dbName = Environment.GetEnvironmentVariable("DB_NAME");
 
