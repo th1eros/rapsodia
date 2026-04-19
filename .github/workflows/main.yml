@@ -121,16 +121,22 @@ jobs:
               echo "❌ Container not running!"
               exit 1
             fi
-            
+
+            if [ "${{ env.DOCKER_TARGET }}" = "production" ]; then
+              PORT=10000
+            else
+              PORT=10001
+            fi
+
             for i in {1..30}; do
-              if docker exec $CONTAINER_ID curl -sf http://localhost:${{ env.DOCKER_TARGET == 'production' && '10000' || '10001' }}/health > /dev/null 2>&1; then
+              if curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
                 echo "✅ Healthcheck passed!"
                 exit 0
               fi
               echo "Waiting for container to be healthy... ($i/30)"
               sleep 2
             done
-            
+
             echo "❌ Healthcheck failed!"
             exit 1
 
