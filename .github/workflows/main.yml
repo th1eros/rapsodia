@@ -53,13 +53,11 @@ jobs:
             echo "IMAGE_TAG=latest" >> $GITHUB_ENV
             echo "DOCKER_TARGET=production" >> $GITHUB_ENV
             echo "DOTNET_ENV=Production" >> $GITHUB_ENV
-            echo "DEPLOY_HOST=${{ secrets.REMOTE_HOST }}" >> $GITHUB_ENV
             echo "DEPLOY_PATH=/home/ubuntu/abitat/rapsodia" >> $GITHUB_ENV
           else
             echo "IMAGE_TAG=staging" >> $GITHUB_ENV
             echo "DOCKER_TARGET=staging" >> $GITHUB_ENV
             echo "DOTNET_ENV=Staging" >> $GITHUB_ENV
-            echo "DEPLOY_HOST=${{ secrets.REMOTE_HOST_STAGING }}" >> $GITHUB_ENV
             echo "DEPLOY_PATH=/home/ubuntu/malebolge/rapsodia" >> $GITHUB_ENV
           fi
 
@@ -97,8 +95,8 @@ jobs:
       - name: Deploy to ${{ env.DOCKER_TARGET }}
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ env.DEPLOY_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
+          host: ${{ vars.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ env.DEPLOY_PATH }}
@@ -110,8 +108,8 @@ jobs:
       - name: Healthcheck validation
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ env.DEPLOY_HOST }}
-          username: ${{ secrets.REMOTE_USER }}
+          host: ${{ vars.REMOTE_HOST }}
+          username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             CONTAINER_ID=$(docker ps --filter "label=com.docker.compose.service=rapsodia" --format "{{.ID}}" | head -1)
