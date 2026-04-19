@@ -3,7 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace Rapsodia.Models.Entity
 {
-    // Tipos de ativo suportados pela plataforma.
     public enum TipoAsset
     {
         OperatingSystem,
@@ -18,10 +17,7 @@ namespace Rapsodia.Models.Entity
     {
         public string     Nome      { get; set; } = null!;
         public TipoAsset  Tipo      { get; set; }
-
-        // Reutiliza o mesmo enum de Vuln â€” garante consistÃªncia no banco e no frontend.
         public AmbienteVuln Ambiente { get; set; }
-
         public bool      Habilitado { get; set; } = true;
         public DateTime? ArchivedAt { get; set; }
 

@@ -14,15 +14,13 @@ namespace Rapsodia.DTO.TelemetryDTO
         public int UniqueAgents { get; set; }
         public int UniqueSessions { get; set; }
         public DateTime? LastEventAt { get; set; }
-        // Últimas 24h agrupadas por hora (para sparkline)
         public List<HourlyBucket> HourlyDistribution { get; set; } = new();
-        // Distribuição por RiskLevel
         public List<RiskBucket> RiskDistribution { get; set; } = new();
     }
 
     public class HourlyBucket
     {
-        public string Hour { get; set; } = string.Empty; // "HH:00"
+        public string Hour { get; set; } = string.Empty; 
         public int Count { get; set; }
         public double AvgEntropy { get; set; }
     }

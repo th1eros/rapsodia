@@ -8,7 +8,7 @@ namespace Rapsodia.Controllers
 {
     [ApiController]
     [Route("api/assets")]
-    [Authorize] // JWT obrigatÃ³rio em todas as rotas deste controller.
+    [Authorize] 
     public class AssetController : ControllerBase
     {
         private readonly IAssetService _assetService;

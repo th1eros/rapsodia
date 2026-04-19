@@ -1,6 +1,5 @@
 namespace Rapsodia.DTO.Response
 {
-    // Envelope padrÃ£o de todas as respostas da API.
     public class ResponseModel<T>
     {
         public T?     Dados    { get; set; }

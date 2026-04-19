@@ -46,7 +46,7 @@ namespace Rapsodia.Controllers
                     Username = request.Username,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                     Role = isFirstUser ? "Admin" : "Analyst",
-                    CreatedAt = DateTime.UtcNow // Garantindo padrão UTC para o Supabase
+                    CreatedAt = DateTime.UtcNow 
                 };
 
                 _context.Users.Add(user);
@@ -57,10 +57,8 @@ namespace Rapsodia.Controllers
             }
             catch (Exception ex)
             {
-                // Este log aparecerá no console da Render
                 _logger.LogError(ex, "Erro crítico no registro do usuário {Username}", request.Username);
 
-                // Retornamos o erro detalhado temporariamente para debugar
                 return StatusCode(500, new
                 {
                     message = "Erro interno no servidor ao registrar.",

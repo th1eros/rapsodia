@@ -6,8 +6,6 @@ namespace Rapsodia.Models.Entity
     {
         [Required] public string Username     { get; set; } = string.Empty;
         [Required] public string PasswordHash { get; set; } = string.Empty;
-
-        // RBAC: "Analyst" Ã© o papel padrÃ£o. Futuramente: "Admin", "Viewer".
         public string Role { get; set; } = "Analyst";
     }
 }
