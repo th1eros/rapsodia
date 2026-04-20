@@ -99,7 +99,7 @@ jobs:
       - name: Deploy to ${{ env.DOCKER_TARGET }}
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ vars.REMOTE_HOST }}
+          host: ${{ secrets.REMOTE_HOST }}
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
@@ -112,7 +112,7 @@ jobs:
       - name: Healthcheck validation
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ vars.REMOTE_HOST }}
+          host: ${{ secrets.REMOTE_HOST }}
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
