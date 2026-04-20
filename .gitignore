@@ -5,7 +5,8 @@
 **/.env.*
 !**/appsettings.json
 !**/appsettings.Development.json
-!**/appsettings.Production.json
+**/appsettings.Staging.json
+**/appsettings.Production.json
 !**/.env.example
 bin/
 obj/
@@ -59,3 +60,7 @@ proxy_temp/
 client_body_temp/.env
 
 
+.vs/
+bin/
+obj/
+appsettings.Production.json
