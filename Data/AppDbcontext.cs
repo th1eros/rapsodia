@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Rapsodia.Models.Entity;
-using Rapsodia.Helpers; // Certifique-se que o namespace do seu Helper está aqui
+using Rapsodia.Helpers; 
 
 namespace Rapsodia.Data
 {
@@ -63,7 +63,6 @@ namespace Rapsodia.Data
                 if (keyBytes.Length != 32)
                     throw new InvalidOperationException("FIELD_ENCRYPTION_KEY deve ter 32 bytes.");
 
-                // Uso do Helper para evitar erros de Expression Tree
                 var aesConverter = new ValueConverter<string, string>(
                     v => AesGcmHelper.Encrypt(v, keyBytes),
                     v => AesGcmHelper.Decrypt(v, keyBytes)

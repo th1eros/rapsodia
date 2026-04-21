@@ -11,7 +11,7 @@ namespace Rapsodia.Controllers
 {
     [Route("api/telemetry")]
     [ApiController]
-    [Authorize] // Camada de segurança base: Exige login por padrão
+    [Authorize] 
     public class TelemetryController : ControllerBase
     {
         private readonly ITelemetryService _telemetryService;
@@ -23,16 +23,16 @@ namespace Rapsodia.Controllers
             _logger = logger;
         }
 
-        // GET api/telemetry — VISUALIZAÇÃO RESTRITA AO ADMIN
+        // GET api/telemetry
         [HttpGet]
-        [Authorize(Roles = "Admin")] // Somente o Admin vê a lista completa
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<List<TelemetryResponseDTO>>>> List([FromQuery] int count = 50)
         {
             var response = await _telemetryService.GetLatestTelemetries(count);
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
-        // GET api/telemetry/stats — RESUMO ESTRATÉGICO PARA O DASHBOARD (SÓ ADMIN)
+        // GET api/telemetry/stats 
         [HttpGet("stats")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<TelemetryStatsDTO>>> Stats()
@@ -41,7 +41,7 @@ namespace Rapsodia.Controllers
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
-        // GET api/telemetry/stream — MONITORAMENTO EM TEMPO REAL (SÓ ADMIN)
+        // GET api/telemetry/stream — MONITORAMENTO EM TEMPO REAL 
         [HttpGet("stream")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<List<TelemetryResponseDTO>>>> Stream(
@@ -55,7 +55,7 @@ namespace Rapsodia.Controllers
             return response.Status ? Ok(response) : BadRequest(response);
         }
 
-        // GET api/telemetry/{id} — BUSCA DETALHADA (SÓ ADMIN)
+        // GET api/telemetry/{id}
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<TelemetryResponseDTO>>> GetById([FromRoute] int id)
@@ -64,8 +64,7 @@ namespace Rapsodia.Controllers
             return response.Status ? Ok(response) : NotFound(response);
         }
 
-        // POST api/telemetry — ENTRADA DE DADOS (AGENTE DE CAMPO)
-        // Mantemos AllowAnonymous para que os agentes possam reportar sem gerenciar sessões de usuário
+        // POST api/telemetry 
         [HttpPost]
         [AllowAnonymous]
         public async Task<ActionResult<ResponseModel<TelemetryResponseDTO>>> Create(
@@ -77,7 +76,7 @@ namespace Rapsodia.Controllers
             return CreatedAtAction(nameof(GetById), new { id = response.Dados?.Id }, response);
         }
 
-        // DELETE api/telemetry/{id} — REMOÇÃO ADMINISTRATIVA (SÓ ADMIN)
+        // DELETE api/telemetry/{id} 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ResponseModel<bool>>> Delete([FromRoute] int id)

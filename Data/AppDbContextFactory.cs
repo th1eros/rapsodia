@@ -69,7 +69,6 @@ namespace Rapsodia.Data
                 string.IsNullOrWhiteSpace(password))
                 return null;
 
-            // Migrations não usam pooling — Session mode não suporta
             var pooling = migrations ? "false" : "true";
 
             return $"Host={host};Port={port};Database={dbName};" +

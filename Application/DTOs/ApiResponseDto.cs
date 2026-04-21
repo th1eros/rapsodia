@@ -2,7 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace Rapsodia.Application.DTOs
 {
-    /// <summary>Envelope alinhado ao front (success / data / message).</summary>
     public class ApiResponseDto<T>
     {
         [JsonPropertyName("success")]

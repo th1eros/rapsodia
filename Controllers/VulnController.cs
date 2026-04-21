@@ -8,7 +8,7 @@ namespace Rapsodia.Controllers
 {
     [Route("api/vulns")]
     [ApiController]
-    [Authorize] // JWT obrigatÃ³rio em todas as rotas deste controller.
+    [Authorize] 
     public class VulnController : ControllerBase
     {
         private readonly IVulnService _vulnService;
