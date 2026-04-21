@@ -1,16 +1,30 @@
 services:
   rapsodia:
-    image: thieros/rapsodia-backend:${TAG:-latest}
-    container_name: abitat_rapsodia_${ENV_NAME:-dev}
-    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: abitat_rapsodia
+    restart: unless-stopped
+    user: "${USER_ID:-1001}:${GROUP_ID:-1001}"
     env_file: .env
     environment:
-      - ASPNETCORE_ENVIRONMENT=${DOTNET_ENV:-Development}
-      - ConnectionStrings__DefaultConnection=${DATABASE_URL}
+      ASPNETCORE_ENVIRONMENT: ${DOTNET_ENV:-Production}
+      ConnectionStrings__DefaultConnection: ${DATABASE_URL}
+      ASPNETCORE_URLS: http://+:10000
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
     ports:
       - "${PORT:-10000}:10000"
+    volumes:
+      - ./data/dpkeys:/root/.aspnet/DataProtection-Keys
     networks:
       - abitat_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   abitat_network:
