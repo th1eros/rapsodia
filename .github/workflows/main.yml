@@ -21,10 +21,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore Rapsodia.csproj
 
       - name: Run tests
-        run: dotnet test --no-restore --verbosity normal
+        run: dotnet test Rapsodia.csproj --no-restore --verbosity normal
 
   build-and-deploy:
     needs: test
