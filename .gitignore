@@ -1,16 +1,8 @@
-﻿# ==========================================
-# GLOBAL
-# ==========================================
+﻿# --- GLOBAL & SECRETS ---
 .env
 **/.env.*
-!**/appsettings.json
-!**/appsettings.Development.json
-**/appsettings.Staging.json
-**/appsettings.Production.json
 !**/.env.example
-bin/
-obj/
-publish/
+secrets.json
 **/*.key
 **/*.pem
 **/*.cert
@@ -19,31 +11,39 @@ publish/
 **/*.ppk
 **/*.crt
 **/*.db
-Doc\Keys\
-secrets.json
+Doc/Keys/
 
-# --- .NET / C# (RAPSODIA)---
-[Bb]in/[Oo]bj/
-Generated\ Files/
+# --- APPSettings (Lógica Personalizada) ---
+!**/appsettings.json
+!**/appsettings.Development.json
+**/appsettings.Staging.json
+appsettings.Warzone.json
+
+# --- .NET / C# ---
+[Bb]in/
+[Oo]bj/
+publish/
+Generated Files/
 TestResults/
 *.user
 .vs/
 .vscode/
+*.pdb
+*.exe
+*.dll
 
-# --- WEB / NODE.JS (FRONTEND / REACT) ---
+# --- WEB / NODE.JS ---
 node_modules/
 .next/
 out/
 build/
 dist/
 *.log
-# --- C++ / NATIVE---
-*.exe
-*.dll
+
+# --- NATIVE / SYSTEM / DOCKER ---
 *.so
 *.dylib
 *.lib
-*.pdb
 ipch/
 .visualstudio/
 *.tlog
@@ -58,9 +58,4 @@ logs/
 temp/
 proxy_temp/
 client_body_temp/.env
-
-
-.vs/
-bin/
-obj/
-appsettings.Production.json
+data

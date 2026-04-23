@@ -1,81 +1,98 @@
-# 🛡️ aBitat — Enterprise Cyber Assets & Vulnerability Management (ECVM)
+# 🛡️ Malebolge — Gestão Empresarial de Ativos e Vulnerabilidades Cibernéticas (ECVM)
 
-A high-performance, secure, and scalable RESTful API designed for centralized management of IT assets and security vulnerabilities. Built with **.NET 8** (Long Term Support) following modern software engineering principles.
-
----
-
-## 🏛️ Enterprise Architecture
-
-The system follows a **Modular Monolith** approach with a clear separation of concerns, ensuring high maintainability and ease of testing.
-
-- **Presentation Layer (Controllers):** RESTful endpoints with standard HTTP status codes, structured JSON responses, and Swagger/OpenAPI 3.0 documentation.
-- **Application Layer (Services):** Contains all business logic, orchestrating data flow between DTOs and the persistence layer. Uses **Dependency Injection (Scoped)** for lifetime management.
-- **Data Access Layer (EF Core):** Optimized persistence using Entity Framework Core with **Npgsql** for PostgreSQL.
-- **Domain Layer (Entities):** Robust models with inheritance from `BaseEntity` to ensure cross-cutting auditability.
+API RESTful de alto desempenho, segura e escalável, projetada para o gerenciamento centralizado de ativos de TI e vulnerabilidades de segurança. Desenvolvida em **.NET 8** com foco em arquitetura modular, conteinerização e prontidão para ambientes de nuvem híbrida.
 
 ---
 
-## 🛠️ Technology Stack & Decisions
+## 🏛️ Arquitetura Corporativa
 
-- **Framework:** .NET 8.0 (ASP.NET Core Web API).
-- **Database:** PostgreSQL (Cloud-native, ACID compliant).
-- **ORM:** Entity Framework Core (Code-First approach).
-- **Security:** JWT (JSON Web Tokens) with HS256 algorithm.
-- **Serialization:** System.Text.Json with `JsonStringEnumConverter` for seamless Frontend-Backend Enum synchronization.
-- **Documentation:** Swagger UI (Swashbuckle) with JWT Authorization integration.
+O sistema adota uma abordagem de **Monólito Modular** com clara separação de responsabilidades, facilitando a manutenção, a testabilidade e a evolução controlada.
 
----
-
-## 🔐 Security & Governance (CIO/CISO Focus)
-
-The aBitat API prioritizes the **CIA Triad** (Confidentiality, Integrity, and Availability):
-
-1. **Authentication & Authorization:**
-   - Stateless JWT-based authentication.
-   - Robust Bearer token validation with Issuer/Audience checks.
-2. **Data Integrity & Auditability:**
-   - **Automatic Auditing:** All entities automatically track `CreatedAt` and `UpdatedAt` timestamps via `AppDbContext` overrides.
-   - **Soft Delete Pattern:** Implemented via a `DeletedAt` timestamp and **EF Core Global Query Filters**. This ensures data is never physically removed without authorization, preserving the audit trail for SOC2/ISO 27001 compliance.
-3. **Password Security:**
-   - Industry-standard hashing using **BCrypt.Net-Next**.
-4. **Resilience:**
-   - Global Exception Handling (via Services/Controllers).
-   - Health Check endpoints (`/health`) for real-time monitoring by orchestrators (Render, K8s).
+- **Camada de Apresentação (Controllers):** Endpoints RESTful com códigos de estado HTTP padronizados, respostas JSON estruturadas e documentação interativa via Swagger/OpenAPI 3.0 (ativação condicional por ambiente).
+- **Camada de Aplicação (Services):** Contém toda a lógica de negócio, orquestrando o fluxo de dados entre DTOs e a camada de persistência. Utiliza **Injeção de Dependência (Scoped)** para gerenciamento do ciclo de vida.
+- **Camada de Acesso a Dados (EF Core):** Persistência otimizada com Entity Framework Core e provider **Npgsql** para PostgreSQL (cloud‑native ou on‑premise).
+- **Camada de Domínio (Entities):** Modelos robustos com herança de `BaseEntity`, garantindo auditabilidade transversal.
+- **Infraestrutura (Cross‑Cutting):** Execução automática de migrations na inicialização; persistência do anel de chaves do Data Protection; ativação condicional da interface do Swagger.
 
 ---
 
-## 🛰️ Integration & Features
+## 🛠️ Stack Tecnológica
 
-### 1. Asset Lifecycle Management
-Comprehensive management of IT assets (Operating Systems, WebApps, Databases, APIs, Networks).
-- **Status:** Online/Offline tracking.
-- **Archiving:** Soft-archive logic for lifecycle decommissioning.
+- **Framework:** .NET 8.0 (ASP.NET Core Web API)
+- **Banco de Dados:** PostgreSQL (Supabase gerenciado para ambientes superiores; instância local em contêiner para desenvolvimento)
+- **ORM:** Entity Framework Core (Code‑First)
+- **Segurança:** JWT (HS256) e criptografia de campos sensíveis
+- **Conteinerização:** Docker com imagens otimizadas (Distroless/Chiseled em produção), arquivos de override por ambiente
+- **Proxy Reverso & TLS:** Nginx + Certbot (renovação automática Let’s Encrypt) para domínios de teste; Cloudflare para proteção adicional e SSL no domínio principal
+- **Documentação:** Swagger UI (Swashbuckle) com suporte a autenticação JWT
 
-### 2. Vulnerability Intelligence
-Detailed tracking of security flaws with severity levels (Critical, High, Medium, Low) and status (Active, Resolved, Archived).
+---
 
-### 3. N:N Asset-Vulnerability Mapping
-Advanced relationship management allowing the mapping of specific vulnerabilities to multiple assets. 
+## 🔐 Segurança e Governança (Foco CISO/CTO)
+
+A API **Malebolge** foi concebida para atender aos pilares **CID** (Confidencialidade, Integridade e Disponibilidade):
+
+1. **Autenticação e Autorização:**
+   - Autenticação stateless baseada em JWT.
+   - Validação rigorosa de `Issuer` e `Audience` nos tokens Bearer.
+
+2. **Integridade e Auditabilidade:**
+   - **Auditoria Automática:** Todas as entidades herdam os campos `CreatedAt` e `UpdatedAt`, gerenciados pelo `AppDbContext`.
+   - **Soft Delete:** Exclusão lógica implementada por meio da coluna `DeletedAt` e **Global Query Filters** do EF Core. Nenhum registro é removido fisicamente, preservando a trilha de auditoria exigida por normas como SOC2 e ISO 27001.
+
+3. **Segurança de Credenciais:**
+   - Hashing de senhas com algoritmo **BCrypt.Net‑Next** (padrão da indústria).
+
+4. **Proteção da Infraestrutura:**
+   - **Nenhum segredo em imagens ou arquivos compose:** Todas as configurações sensíveis são injetadas exclusivamente via variáveis de ambiente e arquivos `.env` externos.
+   - **Imagem de produção hardened:** Imagem Chiseled (sem shell, sem gerenciador de pacotes), reduzindo drasticamente a superfície de ataque.
+   - **Isolamento de rede:** Redes Docker customizadas (`malebolge_network`, `abitat_network`) com políticas de acesso controlado.
+
+5. **Resiliência:**
+   - Tratamento global de exceções.
+   - Endpoint de verificação de saúde (`/health`) para monitoramento em tempo real.
+   - Migrações automáticas do banco de dados executadas na inicialização, garantindo consistência do esquema.
+
+---
+
+## 🛰️ Funcionalidades
+
+### 1. Gestão do Ciclo de Vida de Ativos
+Cadastro completo de ativos de TI (Sistemas Operacionais, Aplicações Web, Bancos de Dados, APIs, Redes).
+- **Status:** Monitoramento Online/Offline.
+- **Arquivamento:** Lógica de *soft‑archive* para descomissionamento controlado.
+
+### 2. Inteligência de Vulnerabilidades
+Registro detalhado de falhas de segurança com níveis de severidade (Crítica, Alta, Média, Baixa) e status (Ativa, Resolvida, Arquivada).
+
+### 3. Mapeamento N:N Ativo‑Vulnerabilidade
+Relacionamento avançado que permite associar uma vulnerabilidade a múltiplos ativos.
 - **Endpoint:** `POST /api/assets/{id}/vulns/{vulnId}`
-- **Data Integrity:** Cascading rules defined via Fluent API to prevent orphaned records.
+- **Integridade:** Regras de integridade referencial definidas via Fluent API, prevenindo registros órfãos.
 
 ---
 
-## 📦 Deployment & CI/CD
+## 🌐 Estratégia Multi‑Ambiente
 
-- **Containerization:** Ready-to-use `Dockerfile` for standardized environments.
-- **Environment Management:** Configuration via Environment Variables (`Jwt__Key`, `ConnectionStrings__DefaultConnection`).
-- **Database Migrations:** Automated synchronization during startup `context.Database.Migrate()`.
+A solução é executada em ambientes isolados, cada um com sua própria base de dados, configuração e terminação TLS, garantindo a segregação adequada entre desenvolvimento, teste e produção.
+
+| Ambiente       | Finalidade                          | Acesso                         |
+|----------------|-------------------------------------|--------------------------------|
+| **Sandbox**    | Desenvolvimento ativo e testes      | `sandbox.th1eros.dev` (HTTPS)  |
+| **Staging**    | Validação pré‑produção (QA)         | `staging.th1eros.dev` (HTTPS)  |
+-----------------------------------------------------------------------------------------
+
+### Principais características operacionais:
+- **Orquestração:** Duas stacks Docker Compose independentes (uma para sandbox/staging, outra exclusiva para produção).
+- **Configuração por ambiente:** Arquivos `.env` mantidos fora do repositório, com valores específicos por ambiente.
+- **Proxy reverso:** Nginx roteia o tráfego para as portas internas; Certbot gerencia automaticamente certificados TLS para os domínios de desenvolvimento; Cloudflare provê proteção adicional contra DDoS e SSL para o domínio principal.
+- **Migrações:** Executadas automaticamente na inicialização da aplicação, com resiliência de conexão através do pooler do Supabase (porta `6543`) nos ambientes de staging e produção.
+- **Chaves de proteção de dados:** Persistidas via volumes Docker, preservando tokens de autenticação entre reinicializações.
+- Implementação de controle de acesso baseado em papéis (RBAC).
+- Painel de visualização para gestão de ativos e vulnerabilidades (front‑end dedicado).
+- Integração com scanners automatizados de vulnerabilidades (Tenable, Nessus).
+- Pipeline de CI/CD com compilação automatizada de imagens e deploy multi‑ambiente.
 
 ---
 
-## 📈 Roadmap
-
-- [ ] Implementation of Role-Based Access Control (RBAC).
-- [ ] Integration with automated vulnerability scanners (Tenable, Nessus).
-- [ ] Advanced reporting engine with PDF/Excel export.
-- [ ] Multi-tenant support.
-
----
-
-**CISO/CTO Note:** *aBitat is built to be the "Source of Truth" for your security posture, ensuring that every asset and its associated risks are documented and trackable.*
+**Nota para CISO/CTO:** *O Malebolge foi projetado para ser a "Fonte da Verdade" da sua postura de segurança, garantindo que cada ativo e seus riscos associados estejam documentados, rastreáveis e protegidos por uma arquitetura de defesa em profundidade.*

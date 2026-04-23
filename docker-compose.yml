@@ -1,17 +1,104 @@
-services:
-  rapsodia:
-    image: thieros/rapsodia-backend:${TAG:-latest}
-    container_name: abitat_rapsodia_${ENV_NAME:-dev}
-    restart: always
-    env_file: .env
-    environment:
-      - ASPNETCORE_ENVIRONMENT=${DOTNET_ENV:-Development}
-      - ConnectionStrings__DefaultConnection=${DATABASE_URL}
-    ports:
-      - "${PORT:-10000}:10000"
-    networks:
-      - abitat_network
+x-template: &template
+  image: thieros/rapsodia-backend:${TAG:-latest}
+  restart: always
+  networks:
+    - malebolge_network
+  volumes:
+    - ./data/${ENV_NAME}/dpkeys:/home/app/.aspnet/DataProtection-Keys
+  environment:
+    - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+    - ENV_NAME=${ENV_NAME}
+    - AppSettings__Domain=${APP_DOMAIN}
+    - AppSettings__Port=${PORT}
+    - DatabaseConfig__Runtime__Host=${DB_HOST_RUNTIME}
+    - DatabaseConfig__Runtime__Port=${DB_PORT_RUNTIME}
+    - DatabaseConfig__Runtime__Database=${DB_NAME}
+    - DatabaseConfig__Runtime__Username=${DB_USER}
+    - DatabaseConfig__Runtime__Password=${DB_PASSWORD}
+    - DatabaseConfig__Migrations__Host=${DB_HOST_MIGRATIONS}
+    - DatabaseConfig__Migrations__Port=${DB_PORT}
+    - DatabaseConfig__Migrations__Database=${DB_NAME}
+    - DatabaseConfig__Migrations__Username=${DB_USER_MIGRATIONS}
+    - DatabaseConfig__Migrations__Password=${DB_PASSWORD_MIGRATIONS}
+    - Jwt__Issuer=${JWT_ISSUER}
+    - Jwt__Audience=${JWT_AUDIENCE}
+    - Jwt__Key=${JWT_KEY}
+    - Security__FieldEncryptionKey=${FIELD_ENCRYPTION_KEY}
 
 networks:
-  abitat_network:
+  malebolge_network:
     external: true
+
+services:
+  rapsodia_sandbox:
+    <<: *template
+    container_name: rapsodia_sandbox
+    volumes:
+      - ./data/sandbox/dpkeys:/home/app/.aspnet/DataProtection-Keys
+    links:
+      - postgres_sandbox
+    env_file:
+      - /home/ubuntu/th1er/ops/environment/sandbox/config/.env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ENV_NAME=sandbox
+      - ASPNETCORE_URLS=http://+:10000               
+      - AppSettings__Port=10000                      
+    ports:
+      - "10000:10000"
+    depends_on:
+      postgres_sandbox:
+        condition: service_healthy
+
+  rapsodia_staging:
+    <<: *template
+    container_name: rapsodia_staging
+    user: root   
+    volumes:
+      - ./data/staging/dpkeys:/home/app/.aspnet/DataProtection-Keys
+    env_file:
+      - /home/ubuntu/th1er/ops/environment/staging/config/.env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Staging
+      - ENV_NAME=staging
+      - ASPNETCORE_URLS=http://+:10001              
+      - AppSettings__Port=10001                     
+    ports:
+      - "10001:10001"
+
+  rapsodia_warzon:
+    <<: *template
+    container_name: rapsodia_warzon
+    user: root  
+    volumes:
+      - ./data/warzon/dpkeys:/home/app/.aspnet/DataProtection-Keys
+    env_file:
+      - /home/ubuntu/th1er/ops/environment/warzon/config/.env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ENV_NAME=warzon
+      - ASPNETCORE_URLS=http://+:10002              
+      - AppSettings__Port=10002
+    ports:
+      - "10002:10002"
+
+  postgres_sandbox:
+    image: postgres:16-alpine
+    container_name: postgres_sandbox
+    restart: always
+    env_file:
+      - /home/ubuntu/th1er/ops/environment/sandbox/config/.env.postgres
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=md5   # Força autenticação MD5 (compatível com senha simples)
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./data/sandbox/postgres:/var/lib/postgresql/data
+    networks:
+      - malebolge_network
+    command: postgres -c listen_addresses='*'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
