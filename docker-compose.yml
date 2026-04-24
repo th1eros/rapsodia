@@ -1,5 +1,5 @@
 x-template: &template
-  image: thieros/rapsodia-backend:${TAG:-latest}
+  image: thieros/rapsodia-backend:${TAG:-staging}
   restart: always
   networks:
     - malebolge_network
@@ -89,7 +89,7 @@ services:
     env_file:
       - /home/ubuntu/th1er/ops/environment/sandbox/config/.env.postgres
     environment:
-      - POSTGRES_HOST_AUTH_METHOD=md5   # Força autenticação MD5 (compatível com senha simples)
+      - POSTGRES_HOST_AUTH_METHOD=md5  
     ports:
       - "5433:5432"
     volumes:

@@ -7,7 +7,7 @@ COPY . .
 RUN dotnet publish "Rapsodia.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage (Standard Jammy)
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-jammy AS staging
 WORKDIR /app
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "Rapsodia.dll"]

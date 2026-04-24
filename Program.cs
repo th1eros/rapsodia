@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Diagnostics;
 using Rapsodia.Data;
 using Rapsodia.DTO.Response;
 using Rapsodia.Infrastructure;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
+using Microsoft.EntityFrameworkCore;
 
 Console.OutputEncoding = Encoding.UTF8;
 Console.InputEncoding = Encoding.UTF8;
