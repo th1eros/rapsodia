@@ -30,7 +30,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     environment: production
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,6 +43,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/th1er/abitat/rapsodia
+            docker compose pull
             docker compose down
             docker compose up -d --force-recreate
             sleep 5
@@ -66,7 +67,7 @@ jobs:
 
             echo "Waiting for container $CONTAINER_NAME to be healthy..."
             for i in $(seq 1 30); do
-              if docker exec $CONTAINER_ID curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
+              if curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
                 echo "✅ Healthcheck passed!"
                 exit 0
               fi
@@ -74,7 +75,8 @@ jobs:
               sleep 2
             done
 
-            echo "❌ Healthcheck failed!"
+            echo "❌ Healthcheck failed! Fetching logs..."
+            docker compose logs abitat_rapsodia --tail 50
             exit 1
 
       - name: Notify on failure
