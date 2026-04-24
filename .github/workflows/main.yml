@@ -51,13 +51,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and Push Docker image
+      - name: Build Docker image (local)
         uses: docker/build-push-action@v5
         with:
           context: .
           target: staging
           platforms: linux/arm64
-          push: true
+          push: false
+          load: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
 
       - name: Run Trivy vulnerability scanning
@@ -71,6 +72,15 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
+
+      - name: Push Docker image to registry
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: staging
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
 
       - name: Deploy to staging
         uses: appleboy/ssh-action@v1.0.3
@@ -108,7 +118,7 @@ jobs:
                 exit 0
               fi
               echo "Attempt $i/45..."
-              sleep 3 
+              sleep 3
             done
 
             echo "❌ Healthcheck failed! Fetching logs..."
