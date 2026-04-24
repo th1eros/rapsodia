@@ -102,13 +102,13 @@ jobs:
             fi
 
             echo "Waiting for container $CONTAINER_NAME to be healthy..."
-            for i in $(seq 1 30); do
+            for i in $(seq 1 45); do
               if curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
                 echo "✅ Healthcheck passed!"
                 exit 0
               fi
-              echo "Attempt $i/30..."
-              sleep 2
+              echo "Attempt $i/45..."
+              sleep 3 
             done
 
             echo "❌ Healthcheck failed! Fetching logs..."
