@@ -30,7 +30,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     environment: staging
-    
+
     permissions:
       security-events: write
       contents: read
@@ -51,14 +51,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Docker image
+      - name: Build and Push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           target: staging
           platforms: linux/arm64
-          push: false
-          load: true
+          push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
 
       - name: Run Trivy vulnerability scanning
@@ -73,15 +72,6 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Push to Docker Hub
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: staging
-          platforms: linux/arm64
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging
-
       - name: Deploy to staging
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -89,9 +79,9 @@ jobs:
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/ubuntu/malebolge/rapsodia
+            cd /home/ubuntu/th1er/malebolge/rapsodia
             docker compose pull rapsodia_staging
-            docker compose up -d rapsodia_staging
+            docker compose up -d --force-recreate rapsodia_staging
             sleep 5
             docker compose ps
 
@@ -113,7 +103,7 @@ jobs:
 
             echo "Waiting for container $CONTAINER_NAME to be healthy..."
             for i in $(seq 1 30); do
-              if docker exec $CONTAINER_ID curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
+              if curl -sf http://localhost:$PORT/health > /dev/null 2>&1; then
                 echo "✅ Healthcheck passed!"
                 exit 0
               fi
@@ -121,7 +111,8 @@ jobs:
               sleep 2
             done
 
-            echo "❌ Healthcheck failed!"
+            echo "❌ Healthcheck failed! Fetching logs..."
+            docker compose logs rapsodia_staging --tail 50
             exit 1
 
       - name: Notify on failure
