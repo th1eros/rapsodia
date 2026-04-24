@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# .NET
+bin/
+obj/
+publish/
+*.log
+
+# Frontend (Node)
+node_modules/
+.next/
+dist/
+build/
+out/
+
+# Ambientes e Segredos
+.env
+**/.env.*
+secrets.json
+appsettings.*.json
+!appsettings.json
+
+# Dados e Infraestrutura
+data/
+**/dpkeys/
+Doc/Keys/
+*.db
+*.sqlite*
+*.md
+
+# Docker e IDEs
+docker-compose*.yml
+.docker/
+.vs/
+.vscode/
+.idea/
+.DS_Store
+
+# Temporários
+temp/
+proxy_temp/
+client_body_temp/

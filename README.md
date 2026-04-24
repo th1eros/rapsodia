@@ -1,81 +1,63 @@
-# 🛡️ aBitat — Enterprise Cyber Assets & Vulnerability Management (ECVM)
+# 🏢 aBitat — Ambiente de Produção (Rapsodia)
 
-A high-performance, secure, and scalable RESTful API designed for centralized management of IT assets and security vulnerabilities. Built with **.NET 8** (Long Term Support) following modern software engineering principles.
-
----
-
-## 🏛️ Enterprise Architecture
-
-The system follows a **Modular Monolith** approach with a clear separation of concerns, ensuring high maintainability and ease of testing.
-
-- **Presentation Layer (Controllers):** RESTful endpoints with standard HTTP status codes, structured JSON responses, and Swagger/OpenAPI 3.0 documentation.
-- **Application Layer (Services):** Contains all business logic, orchestrating data flow between DTOs and the persistence layer. Uses **Dependency Injection (Scoped)** for lifetime management.
-- **Data Access Layer (EF Core):** Optimized persistence using Entity Framework Core with **Npgsql** for PostgreSQL.
-- **Domain Layer (Entities):** Robust models with inheritance from `BaseEntity` to ensure cross-cutting auditability.
+Plataforma de produção isolada da API Rapsodia, executada em contêiner **Docker** sobre **.NET 8.0 (LTS)**, com imagem ultra‑enxuta baseada em **Chiseled Ubuntu**. Projetada para oferecer máxima estabilidade, segurança e eficiência operacional em cargas de trabalho reais.
 
 ---
 
-## 🛠️ Technology Stack & Decisions
+## 📦 Stack de Produção
 
-- **Framework:** .NET 8.0 (ASP.NET Core Web API).
-- **Database:** PostgreSQL (Cloud-native, ACID compliant).
-- **ORM:** Entity Framework Core (Code-First approach).
-- **Security:** JWT (JSON Web Tokens) with HS256 algorithm.
-- **Serialization:** System.Text.Json with `JsonStringEnumConverter` for seamless Frontend-Backend Enum synchronization.
-- **Documentation:** Swagger UI (Swashbuckle) with JWT Authorization integration.
-
----
-
-## 🔐 Security & Governance (CIO/CISO Focus)
-
-The aBitat API prioritizes the **CIA Triad** (Confidentiality, Integrity, and Availability):
-
-1. **Authentication & Authorization:**
-   - Stateless JWT-based authentication.
-   - Robust Bearer token validation with Issuer/Audience checks.
-2. **Data Integrity & Auditability:**
-   - **Automatic Auditing:** All entities automatically track `CreatedAt` and `UpdatedAt` timestamps via `AppDbContext` overrides.
-   - **Soft Delete Pattern:** Implemented via a `DeletedAt` timestamp and **EF Core Global Query Filters**. This ensures data is never physically removed without authorization, preserving the audit trail for SOC2/ISO 27001 compliance.
-3. **Password Security:**
-   - Industry-standard hashing using **BCrypt.Net-Next**.
-4. **Resilience:**
-   - Global Exception Handling (via Services/Controllers).
-   - Health Check endpoints (`/health`) for real-time monitoring by orchestrators (Render, K8s).
+| Componente               | Escolha Técnica                                   |
+|--------------------------|---------------------------------------------------|
+| **Runtime**              | .NET 8.0.125 (LTS)                                |
+| **Banco de Dados**       | PostgreSQL gerenciado (Supabase)                  |
+| **Containerização**      | Docker `Chiseled`                                 |
+| **Proxy Reverso**        | Nginx (local) + Cloudflare (CDN e DDoS)           |
+| **Certificação SSL**     | Let's Encrypt (Certbot) no domínio `.com`         |
+| **Rede**                 | Rede Docker isolada                               |
+| **Persistência Chaves**  | Volume Docker para Data Protection                |
 
 ---
 
-## 🛰️ Integration & Features
+## 🚀 Características Técnicas
 
-### 1. Asset Lifecycle Management
-Comprehensive management of IT assets (Operating Systems, WebApps, Databases, APIs, Networks).
-- **Status:** Online/Offline tracking.
-- **Archiving:** Soft-archive logic for lifecycle decommissioning.
+### 🎯 Isolamento Total
+O ambiente de produção roda em uma **stack Docker Compose dedicada**, completamente independente dos ambientes de desenvolvimento e testes. Isso garante que atualizações ou falhas em outros ambientes jamais afetem o serviço em produção.
 
-### 2. Vulnerability Intelligence
-Detailed tracking of security flaws with severity levels (Critical, High, Medium, Low) and status (Active, Resolved, Archived).
+### 🐚 Imagem Chiseled – O Estado da Arte em Containerização
+A imagem do contêiner é construída a partir da variante **Chiseled** do Ubuntu fornecida pela Microsoft. As imagens Chiseled:
 
-### 3. N:N Asset-Vulnerability Mapping
-Advanced relationship management allowing the mapping of specific vulnerabilities to multiple assets. 
-- **Endpoint:** `POST /api/assets/{id}/vulns/{vulnId}`
-- **Data Integrity:** Cascading rules defined via Fluent API to prevent orphaned records.
+- **Não contêm shell** (`sh`, `bash`, etc.) nem gerenciador de pacotes.
+- Incluem **apenas os binários e bibliotecas estritamente necessários** para executar uma aplicação .NET.
+- **Reduzem drasticamente a superfície de ataque**, eliminando vetores comuns de intrusão.
+- São **significativamente menores**, acelerando o *pull*, a inicialização e a distribuição.
+
+Essa escolha de design torna o ambiente de produção **hardened por padrão**, exigindo que toda a configuração seja feita externamente — seja via arquivos de ambiente, seja por meio de volumes montados.
+
+### ⚙️ Configuração Externalizada
+Nenhuma informação sensível (senhas, chaves JWT, strings de conexão) é armazenada na imagem ou no código fonte. Toda a configuração é injetada em tempo de execução através de:
+
+- **Arquivo de ambiente dedicado** (`.env`), localizado fora do repositório.
+- **Variáveis de ambiente** definidas no `docker-compose.yml` a partir do arquivo `.env`.
+
+Exemplo de variáveis gerenciadas:
+
+- `ConnectionStrings__DefaultConnection`
+- `Jwt__Issuer`, `Jwt__Audience`, `Jwt__Key`
+- `Security__FieldEncryptionKey`
+- `AppSettings__Domain`, `AppSettings__Port`
+- `ASPNETCORE_URLS` e `ASPNETCORE_ENVIRONMENT`
+
+### 🛡️ Comunicação Segura e Balanceamento
+- O tráfego externo chega via **Cloudflare**, que fornece CDN e mitigação de DDoS.
+- O Cloudflare se comunica com o servidor de origem por HTTPS, utilizando um certificado **Let's Encrypt** válido (renovado automaticamente pelo Certbot).
+- Internamente, o Nginx atua como proxy reverso, encaminhando as requisições para o contêiner da aplicação na porta `*`.
+
+### 🔄 Migrações Automáticas
+Ao iniciar, a aplicação executa automaticamente as migrações pendentes do Entity Framework Core no banco de dados Supabase, garantindo que o esquema esteja sempre atualizado sem intervenção manual.
+
+### ✳️ Resiliência e Monitoramento
+- Endpoint de saúde (`/health`) exposto para monitoramento externo.
+- Política de reinício `unless-stopped` garante recuperação automática em caso de falha.
+- Logs estruturados em formato JSON, rotacionados automaticamente (limite de 10 MB por arquivo, até 3 arquivos).
 
 ---
-
-## 📦 Deployment & CI/CD
-
-- **Containerization:** Ready-to-use `Dockerfile` for standardized environments.
-- **Environment Management:** Configuration via Environment Variables (`Jwt__Key`, `ConnectionStrings__DefaultConnection`).
-- **Database Migrations:** Automated synchronization during startup `context.Database.Migrate()`.
-
----
-
-## 📈 Roadmap
-
-- [ ] Implementation of Role-Based Access Control (RBAC).
-- [ ] Integration with automated vulnerability scanners (Tenable, Nessus).
-- [ ] Advanced reporting engine with PDF/Excel export.
-- [ ] Multi-tenant support.
-
----
-
-**CISO/CTO Note:** *aBitat is built to be the "Source of Truth" for your security posture, ensuring that every asset and its associated risks are documented and trackable.*

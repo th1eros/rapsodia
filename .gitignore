@@ -1,66 +1,52 @@
-﻿# ==========================================
-# GLOBAL
-# ==========================================
-.env
-**/.env.*
-!**/appsettings.json
-!**/appsettings.Development.json
-**/appsettings.Staging.json
-**/appsettings.Production.json
-!**/.env.example
-bin/
-obj/
-publish/
-**/*.key
-**/*.pem
-**/*.cert
-**/*.pfx
-**/*.pub
-**/*.ppk
-**/*.crt
-**/*.db
-Doc\Keys\
+﻿# --- Secrets & Infrastructure ---
+.env*
+*.key
+*.pem
+*.cert
+*.crt
+*.pub
+*.ppk
 secrets.json
+**/dpkeys/
+data/
+*.log
 
-# --- .NET / C# (RAPSODIA)---
-[Bb]in/[Oo]bj/
-Generated\ Files/
+# --- .NET Artifacts ---
+[Bb]in/
+[Oo]bj/
 TestResults/
+publish/
 *.user
+*.pdb
+
+# --- AppSettings Security ---
+appsettings.Production.json
+!appsettings.json
+
+# --- Data & DB ---
+*.db
+*.sqlite*
+*.dmp
+*.bak
+*.old
+
+# --- IDE & OS ---
 .vs/
 .vscode/
+.idea/
+.DS_Store
 
-# --- WEB / NODE.JS (FRONTEND / REACT) ---
+# --- Build & Frontend ---
 node_modules/
 .next/
-out/
-build/
 dist/
-*.log
-# --- C++ / NATIVE---
+build/
+out/
+
+# --- Native/Generated ---
 *.exe
 *.dll
 *.so
 *.dylib
-*.lib
-*.pdb
-ipch/
-.visualstudio/
 *.tlog
 *.lastbuildstate
-*.ora
-*.dmp
-*.sqlite*
-network/admin/tnsnames.ora
-.docker/
-logs/
-*.pid
-temp/
-proxy_temp/
-client_body_temp/.env
-
-
-.vs/
-bin/
-obj/
-appsettings.Production.json

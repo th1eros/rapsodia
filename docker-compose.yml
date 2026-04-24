@@ -1,23 +1,43 @@
+networks:
+  abitat_network:
+    external: true
+
 services:
-  rapsodia:
+  rapsodia_backup:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: abitat_rapsodia
     restart: unless-stopped
-    user: "${USER_ID:-1001}:${GROUP_ID:-1001}"
-    env_file: .env
+    user: root
+    env_file:
+      - /home/ubuntu/th1er/ops/environment/production/config/.env
     environment:
-      ASPNETCORE_ENVIRONMENT: ${DOTNET_ENV:-Production}
-      ConnectionStrings__DefaultConnection: ${DATABASE_URL}
-      ASPNETCORE_URLS: http://+:10000
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_AUDIENCE: ${JWT_AUDIENCE}
-      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      - ASPNETCORE_ENVIRONMENT=${DOTNET_ENV:-Production}
+      - ENV_NAME=${ENV_NAME:-production}
+      - AppSettings__Domain=${APP_DOMAIN}
+      - AppSettings__Port=${PORT:-10003}
+      - DatabaseConfig__Runtime__Host=${DB_HOST_RUNTIME}
+      - DatabaseConfig__Runtime__Port=${DB_PORT_RUNTIME}
+      - DatabaseConfig__Runtime__Database=${DB_NAME}
+      - DatabaseConfig__Runtime__Username=${DB_USER}
+      - DatabaseConfig__Runtime__Password=${DB_PASSWORD}
+      - DatabaseConfig__Migrations__Host=${DB_HOST_MIGRATIONS}
+      - DatabaseConfig__Migrations__Port=${DB_PORT}
+      - DatabaseConfig__Migrations__Database=${DB_NAME}
+      - DatabaseConfig__Migrations__Username=${DB_USER_MIGRATIONS}
+      - DatabaseConfig__Migrations__Password=${DB_PASSWORD_MIGRATIONS}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - Jwt__Key=${JWT_KEY}
+      - Security__FieldEncryptionKey=${FIELD_ENCRYPTION_KEY}
+      - ASPNETCORE_URLS=http://+:10003
+      - AppSettings__Port=10003
+    command: sh -c "chmod 644 /app/appsettings.json && dotnet Rapsodia.dll"
     ports:
-      - "${PORT:-10000}:10000"
+      - "${PORT:-10003}:10003"
     volumes:
-      - ./data/dpkeys:/root/.aspnet/DataProtection-Keys
+      - ./data/${ENV_NAME:-production}/dpkeys:/home/app/.aspnet/DataProtection-Keys
     networks:
       - abitat_network
     logging:
@@ -25,7 +45,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-networks:
-  abitat_network:
-    external: true
