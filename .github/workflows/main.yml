@@ -42,7 +42,7 @@ jobs:
           username: ${{ vars.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/ubuntu/abitat/rapsodia
+            cd /home/ubuntu/th1er/abitat/rapsodia
             docker compose down
             docker compose up -d --force-recreate
             sleep 5
